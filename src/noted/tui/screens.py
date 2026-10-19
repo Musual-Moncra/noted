@@ -1,3 +1,4 @@
+import unicodedata
 from typing import Optional, Tuple
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -42,9 +43,10 @@ class NewNoteModal(ModalScreen[Optional[Tuple[str, list[str]]]]):
         self.dismiss(None)
 
     def _submit(self) -> None:
-        title = self.query_one("#input-title", Input).value.strip() or "Untitled Note"
+        raw_title = self.query_one("#input-title", Input).value.strip()
+        title = unicodedata.normalize("NFC", raw_title) if raw_title else "Untitled Note"
         tags_raw = self.query_one("#input-tags", Input).value.strip()
-        tags = [t.strip() for t in tags_raw.split(",") if t.strip()]
+        tags = [unicodedata.normalize("NFC", t.strip()) for t in tags_raw.split(",") if t.strip()]
         self.dismiss((title, tags))
 
 

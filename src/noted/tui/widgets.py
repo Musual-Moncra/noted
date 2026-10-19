@@ -1,7 +1,61 @@
+import unicodedata
 from textual.app import ComposeResult
 from textual.containers import Horizontal
-from textual.widgets import Button, ListItem, Static
+from textual.document._document import EditResult, Location
+from textual.widgets import Button, ListItem, Static, TextArea
 from noted.models import Note, NoteSummary
+
+class VietnameseTextArea(TextArea):
+    """Enhanced TextArea optimized for Vietnamese IMEs (Telex, Simple Telex, EVKey, OpenKey, UniKey).
+
+    Key enhancements:
+    - Normalizes all typed, pasted, or loaded text to standard Unicode NFC (precomposed).
+    - Automatically combines standalone combining diacritical marks (Unicode category 'Mn', e.g. acute,
+      grave, hook, tilde, dot-below) with preceding vowels, preventing double-vowels or dropped tone marks.
+    - Preserves cursor position and smooth keyboard-first editing.
+    """
+
+    def load_text(self, text: str) -> None:
+        """Loads text normalized to standard NFC."""
+        if text:
+            text = unicodedata.normalize("NFC", text)
+        super().load_text(text)
+
+    def replace(
+        self,
+        insert: str,
+        start: Location,
+        end: Location,
+        *,
+        maintain_selection_offset: bool = True,
+    ) -> EditResult:
+        if insert:
+            insert = unicodedata.normalize("NFC", insert)
+        return super().replace(insert, start, end, maintain_selection_offset=maintain_selection_offset)
+
+    def _replace_via_keyboard(
+        self,
+        insert: str,
+        start: Location,
+        end: Location,
+    ) -> EditResult | None:
+        if not insert or self.read_only:
+            return super()._replace_via_keyboard(insert, start, end)
+
+        norm_insert = unicodedata.normalize("NFC", insert)
+
+        # Check if incoming character is a combining diacritical mark (Mn)
+        if start == end and len(norm_insert) == 1 and unicodedata.category(norm_insert).startswith("M"):
+            row, col = start
+            if col > 0:
+                line = self.document.get_line(row)
+                prev_char = line[col - 1]
+                combined = unicodedata.normalize("NFC", prev_char + norm_insert)
+                if combined != prev_char + norm_insert:
+                    # Replace preceding character with combined accented character
+                    return self.replace(combined, (row, col - 1), (row, col), maintain_selection_offset=False)
+
+        return super()._replace_via_keyboard(norm_insert, start, end)
 
 class NoteListItem(ListItem):
     """A list item representing a note summary in the sidebar."""

@@ -1,5 +1,18 @@
+import os
+import sys
+import unicodedata
 from pathlib import Path
 from typing import Optional
+
+# Disable Kitty extended keyboard protocol early to ensure Vietnamese IMEs
+# (Telex, Simple Telex, EVKey, OpenKey, UniKey) work seamlessly without dropped backspaces or duplicated vowels.
+os.environ.setdefault("TEXTUAL_DISABLE_KITTY_KEY", "1")
+try:
+    import textual.constants as _tc
+    _tc.DISABLE_KITTY_KEY = True
+except Exception:
+    pass
+
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
@@ -21,7 +34,7 @@ from noted.indexer import NoteIndexer
 from noted.models import Note, NoteSummary
 from noted.storage import StorageManager
 from noted.tui.screens import ColorFormatModal, ConfirmDeleteModal, HelpModal, NewNoteModal
-from noted.tui.widgets import MetadataHeader, NoteListItem
+from noted.tui.widgets import MetadataHeader, NoteListItem, VietnameseTextArea
 
 class NotedApp(App[None]):
     """Main interactive Textual Terminal Application for noted."""
@@ -90,12 +103,20 @@ class NotedApp(App[None]):
                             yield Button("❝ Quote", id="btn-fmt-quote", classes="fmt-btn")
                             yield Button("💡 Tip/Callout", id="btn-fmt-callout", classes="fmt-btn")
                             yield Button("🎨 Màu sắc", id="btn-fmt-color", classes="fmt-btn")
-                        yield TextArea(id="text-editor", language="markdown")
+                        yield VietnameseTextArea(id="text-editor", language="markdown")
                     with Container(id="view-container"):
                         yield Markdown(id="markdown-viewer")
         yield Footer()
 
     def on_mount(self) -> None:
+        # Explicitly instruct terminal to exit any active Kitty keyboard protocol state
+        if sys.platform != "win32" and sys.stdout.isatty():
+            try:
+                sys.stdout.write("\x1b[<u")
+                sys.stdout.flush()
+            except Exception:
+                pass
+
         self.config = self.custom_config or load_config()
         self.storage = StorageManager(self.config)
         self.db = DatabaseManager(self.config.db_path)
@@ -155,7 +176,7 @@ class NotedApp(App[None]):
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "search-input":
-            query = event.value.strip()
+            query = unicodedata.normalize("NFC", event.value.strip())
             list_view = self.query_one("#notes-list", ListView)
             list_view.clear()
 
@@ -270,7 +291,7 @@ class NotedApp(App[None]):
             return
 
         editor = self.query_one("#text-editor", TextArea)
-        self.current_note.body = editor.text
+        self.current_note.body = unicodedata.normalize("NFC", editor.text)
         self.storage.save_note(self.current_note)
         self.indexer.index_note(self.current_note)
 

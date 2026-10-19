@@ -1,4 +1,15 @@
+import os
 import sys
+
+# Disable Kitty extended keyboard protocol early to ensure Vietnamese IMEs
+# (Telex, Simple Telex, EVKey, OpenKey, UniKey) work smoothly without dropped backspaces or duplicated vowels.
+os.environ.setdefault("TEXTUAL_DISABLE_KITTY_KEY", "1")
+try:
+    import textual.constants as _tc
+    _tc.DISABLE_KITTY_KEY = True
+except Exception:
+    pass
+
 from datetime import date
 from pathlib import Path
 from typing import Optional
