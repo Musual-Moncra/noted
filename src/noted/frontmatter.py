@@ -41,8 +41,9 @@ def serialize_note(metadata: dict[str, Any], body: str) -> str:
     return f"---\n{yaml_str}---\n\n{clean_body}"
 
 def generate_note_id() -> str:
-    """Generate a chronological unique note identifier in format YYYYMMDD-HHMMSS."""
-    return datetime.now().strftime("%Y%m%d-%H%M%S")
+    """Generate a chronological unique note identifier in format YYYYMMDD-HHMMSS-xxxx."""
+    import secrets
+    return f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{secrets.token_hex(2)}"
 
 def slugify(text: str) -> str:
     """Convert text to a URL- and filename-safe slug."""

@@ -83,10 +83,9 @@ Some body text
 
 def test_generate_note_id():
     nid = generate_note_id()
-    assert len(nid) == 15  # YYYYMMDD-HHMMSS (8 + 1 + 6)
+    assert len(nid) >= 15  # YYYYMMDD-HHMMSS-xxxx
     assert nid[8] == "-"
     assert nid[:8].isdigit()
-    assert nid[9:].isdigit()
 
 def test_slugify():
     assert slugify("Hello World!") == "hello-world"
