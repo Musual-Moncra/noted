@@ -135,13 +135,19 @@ Screen {
 }
 
 /* Modal styles */
+ModalScreen {
+    align: center middle;
+}
+
 .modal-dialog {
-    width: 64;
+    width: 68;
+    max-width: 90%;
+    max-height: 85%;
+    overflow-y: auto;
     height: auto;
     background: $surface;
     border: thick $primary;
     padding: 1 2;
-    align: center middle;
 }
 
 .modal-buttons {

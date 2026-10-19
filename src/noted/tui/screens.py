@@ -9,7 +9,7 @@ class NewNoteModal(ModalScreen[Optional[Tuple[str, list[str]]]]):
     """Modal dialog to create a new note with Title and Tags."""
 
     BINDINGS = [
-        Binding("escape", "cancel", "Cancel"),
+        Binding("escape", "cancel", "Cancel", priority=True),
     ]
 
     def compose(self) -> ComposeResult:
@@ -52,7 +52,7 @@ class ConfirmDeleteModal(ModalScreen[bool]):
     """Confirmation modal before deleting a note."""
 
     BINDINGS = [
-        Binding("escape", "cancel", "Cancel"),
+        Binding("escape", "cancel", "Cancel", priority=True),
     ]
 
     def __init__(self, note_title: str):
@@ -84,9 +84,9 @@ class HelpModal(ModalScreen[None]):
     """Modal displaying keyboard shortcuts and usage tips."""
 
     BINDINGS = [
-        Binding("escape", "dismiss_help", "Close"),
-        Binding("question_mark", "dismiss_help", "Close"),
-        Binding("enter", "dismiss_help", "Close"),
+        Binding("escape", "dismiss_help", "Close", priority=True),
+        Binding("question_mark", "dismiss_help", "Close", priority=True),
+        Binding("enter", "dismiss_help", "Close", priority=True),
     ]
 
     SHORTCUTS = [

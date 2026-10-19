@@ -3,6 +3,7 @@ from typing import Optional
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
+from textual.screen import ModalScreen
 from textual.widgets import (
     Button,
     Footer,
@@ -232,7 +233,16 @@ class NotedApp(App[None]):
             self.set_mode("split")
 
     def action_exit_edit_mode(self) -> None:
-        """Exits edit/split mode, auto-saves, and focuses the notes list."""
+        """Exits active modal screen or edit/split mode, auto-saves, and focuses the notes list."""
+        if len(self.screen_stack) > 1 and isinstance(self.screen, ModalScreen):
+            if hasattr(self.screen, "action_cancel"):
+                self.screen.action_cancel()
+            elif hasattr(self.screen, "action_dismiss_help"):
+                self.screen.action_dismiss_help()
+            else:
+                self.screen.dismiss(None)
+            return
+
         if self.note_mode in ["edit", "split"]:
             self.set_mode("view")
         else:

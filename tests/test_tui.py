@@ -230,3 +230,47 @@ async def test_tui_mode_buttons(tmp_path, monkeypatch):
         await pilot.click("#btn-mode-view")
         await pilot.pause()
         assert app.note_mode == "view"
+
+@pytest.mark.asyncio
+async def test_tui_modal_centering(tmp_path, monkeypatch):
+    from noted.tui.screens import NewNoteModal, HelpModal, ConfirmDeleteModal
+    notes_dir = tmp_path / "tui_modal_centering"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    storage.create_note(title="Centered Modal Note", body="Testing popups")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+
+        # Test NewNoteModal is centered
+        await pilot.press("n")
+        await pilot.pause()
+        assert isinstance(app.screen, NewNoteModal)
+        assert app.screen.styles.align_horizontal == "center"
+        assert app.screen.styles.align_vertical == "middle"
+        await pilot.press("escape")
+        await pilot.pause()
+
+        # Test HelpModal is centered
+        await pilot.press("question_mark")
+        await pilot.pause()
+        assert isinstance(app.screen, HelpModal)
+        assert app.screen.styles.align_horizontal == "center"
+        assert app.screen.styles.align_vertical == "middle"
+        await pilot.press("escape")
+        await pilot.pause()
+
+        # Test ConfirmDeleteModal is centered
+        await pilot.press("d")
+        await pilot.pause()
+        assert isinstance(app.screen, ConfirmDeleteModal)
+        assert app.screen.styles.align_horizontal == "center"
+        assert app.screen.styles.align_vertical == "middle"
+        await pilot.press("escape")
+        await pilot.pause()
