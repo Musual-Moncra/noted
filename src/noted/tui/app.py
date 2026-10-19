@@ -61,6 +61,7 @@ class NotedApp(App[None]):
         self.indexer: NoteIndexer
         self.current_note: Optional[Note] = None
         self.note_mode: str = "view"  # "view", "edit", or "split"
+        self._preview_timer = None
 
     @property
     def edit_mode(self) -> bool:
@@ -177,9 +178,19 @@ class NotedApp(App[None]):
                 self.query_one("#text-editor", TextArea).text = ""
 
     def on_text_area_changed(self, event: TextArea.Changed) -> None:
-        """Live-updates the markdown viewer in Split mode as the user types."""
+        """Debounced live-update of the markdown viewer in Split mode."""
         if self.note_mode == "split":
-            self.query_one("#markdown-viewer", Markdown).update(event.text_area.text or "*Empty note.*")
+            if getattr(self, "_preview_timer", None) is not None:
+                self._preview_timer.stop()
+            self._preview_timer = self.set_timer(0.2, self._update_live_preview)
+
+    def _update_live_preview(self) -> None:
+        if self.note_mode == "split":
+            try:
+                editor = self.query_one("#text-editor", TextArea)
+                self.query_one("#markdown-viewer", Markdown).update(editor.text or "*Empty note.*")
+            except Exception:
+                pass
 
     def set_mode(self, mode: str) -> None:
         """Switches between 'view', 'edit', and 'split' mode with automatic saving."""
