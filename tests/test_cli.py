@@ -88,3 +88,64 @@ def test_cli_rename():
     assert view_res.exit_code == 0
     assert "Rename me please" in view_res.stdout
 
+
+def test_cli_lock_and_view():
+    add_res = runner.invoke(app, ["add", "Classified Information 456", "--title", "Secret CLI Note"])
+    assert add_res.exit_code == 0
+
+    # Lock note with password
+    lock_res = runner.invoke(app, ["lock", "Secret CLI Note", "-p", "MySecretKey"])
+    assert lock_res.exit_code == 0
+    assert "Locked note" in lock_res.stdout
+
+    # View with wrong password should fail
+    fail_view = runner.invoke(app, ["view", "Secret CLI Note", "-p", "WrongKey"])
+    assert fail_view.exit_code != 0
+    assert "Incorrect password" in fail_view.stdout
+
+    # View with correct password should display content
+    success_view = runner.invoke(app, ["view", "Secret CLI Note", "-p", "MySecretKey"])
+    assert success_view.exit_code == 0
+    assert "Classified Information 456" in success_view.stdout
+
+
+def test_cli_unlock():
+    add_res = runner.invoke(app, ["add", "Lock and Unlock Content", "--title", "Unlock Me Note"])
+    assert add_res.exit_code == 0
+
+    # Lock it
+    runner.invoke(app, ["lock", "Unlock Me Note", "-p", "PassKey99"])
+
+    # Unlock with correct password
+    unlock_res = runner.invoke(app, ["unlock", "Unlock Me Note", "-p", "PassKey99"])
+    assert unlock_res.exit_code == 0
+    assert "Permanently unlocked" in unlock_res.stdout
+
+    # Now view without password
+    view_res = runner.invoke(app, ["view", "Unlock Me Note"])
+    assert view_res.exit_code == 0
+    assert "Lock and Unlock Content" in view_res.stdout
+
+
+def test_cli_copy_encrypted(monkeypatch):
+    runner.invoke(app, ["add", "Encrypted clipboard secret", "--title", "Copy Encrypted Note"])
+    runner.invoke(app, ["lock", "Copy Encrypted Note", "-p", "ClipSecret1"])
+
+    copied = []
+    monkeypatch.setattr("noted.clipboard.copy_to_clipboard", lambda text, app=None: copied.append(text) or True)
+
+    res = runner.invoke(app, ["copy", "Copy Encrypted Note", "-p", "ClipSecret1"])
+    assert res.exit_code == 0
+    assert "Copied note" in res.stdout
+    assert len(copied) == 1
+    assert "Encrypted clipboard secret" in copied[0]
+
+
+def test_cli_edit_encrypted_protection():
+    runner.invoke(app, ["add", "Cannot edit directly", "--title", "Protected Edit Note"])
+    runner.invoke(app, ["lock", "Protected Edit Note", "-p", "ProtectedKey"])
+
+    res = runner.invoke(app, ["edit", "Protected Edit Note"])
+    assert res.exit_code != 0
+    assert "This note is encrypted" in res.stdout
+

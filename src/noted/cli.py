@@ -146,13 +146,73 @@ def search_cmd(
 @app.command(name="view", help="Render a note in the terminal.")
 def view_cmd(
     identifier: str = typer.Argument(..., help="Note ID, journal date (YYYY-MM-DD), or title keyword"),
+    password: Optional[str] = typer.Option(None, "-p", "--password", help="Password to decrypt locked note"),
 ) -> None:
     config, storage, db, indexer = get_services()
     note = indexer.get_note_by_id_or_date(identifier)
     if not note:
         console.print(f"[bold red]Error:[/bold red] Note matching '[yellow]{identifier}[/yellow]' not found.")
         raise typer.Exit(code=1)
+
+    if note.encrypted:
+        if not password:
+            password = typer.prompt(f"Password for '{note.title}'", hide_input=True)
+        try:
+            decrypted = storage.unlock_note(note, password)
+            note.body = decrypted
+        except Exception:
+            console.print("[bold red]Error:[/bold red] Incorrect password. Could not decrypt note.")
+            raise typer.Exit(code=1)
+
     console.print(build_note_panel(note))
+
+@app.command(name="lock", help="Lock and encrypt a note with a password.")
+def lock_cmd(
+    identifier: str = typer.Argument(..., help="Note ID, journal date, or title keyword"),
+    password: Optional[str] = typer.Option(None, "-p", "--password", help="Password for encryption"),
+) -> None:
+    config, storage, db, indexer = get_services()
+    note = indexer.get_note_by_id_or_date(identifier)
+    if not note:
+        console.print(f"[bold red]Error:[/bold red] Note matching '[yellow]{identifier}[/yellow]' not found.")
+        raise typer.Exit(code=1)
+
+    if not password:
+        password = typer.prompt(
+            f"Enter password to lock '{note.title}'",
+            hide_input=True,
+            confirmation_prompt=True,
+        )
+
+    storage.lock_note(note, password)
+    indexer.index_note(note)
+    console.print(f"[bold green]✓[/bold green] Locked note [bold cyan]{note.id}[/bold cyan] ([bold white]{note.title}[/bold white]) with AES-256 encryption.")
+
+@app.command(name="unlock", help="Permanently decrypt and remove password lock from a note.")
+def unlock_cmd(
+    identifier: str = typer.Argument(..., help="Note ID, journal date, or title keyword"),
+    password: Optional[str] = typer.Option(None, "-p", "--password", help="Password to decrypt note"),
+) -> None:
+    config, storage, db, indexer = get_services()
+    note = indexer.get_note_by_id_or_date(identifier)
+    if not note:
+        console.print(f"[bold red]Error:[/bold red] Note matching '[yellow]{identifier}[/yellow]' not found.")
+        raise typer.Exit(code=1)
+
+    if not note.encrypted:
+        console.print(f"[yellow]Note '{note.title}' is not locked.[/yellow]")
+        return
+
+    if not password:
+        password = typer.prompt(f"Enter password to unlock '{note.title}'", hide_input=True)
+
+    try:
+        storage.remove_lock(note, password)
+        indexer.index_note(note)
+        console.print(f"[bold green]✓[/bold green] Permanently unlocked note [bold cyan]{note.id}[/bold cyan] ([bold white]{note.title}[/bold white]).")
+    except Exception:
+        console.print("[bold red]Error:[/bold red] Incorrect password. Could not unlock note.")
+        raise typer.Exit(code=1)
 
 @app.command(name="edit", help="Open a note in $EDITOR.")
 def edit_cmd(
@@ -162,6 +222,10 @@ def edit_cmd(
     note = indexer.get_note_by_id_or_date(identifier)
     if not note or not note.filepath:
         console.print(f"[bold red]Error:[/bold red] Note matching '[yellow]{identifier}[/yellow]' not found.")
+        raise typer.Exit(code=1)
+
+    if note.encrypted:
+        console.print("[bold yellow]Warning:[/bold yellow] This note is encrypted. Please use the interactive TUI ('noted') or unlock it with 'noted unlock' first.")
         raise typer.Exit(code=1)
 
     if open_in_editor(note.filepath, preferred_editor=config.editor):
@@ -180,6 +244,7 @@ def sync_cmd() -> None:
 def copy_cmd(
     identifier: Optional[str] = typer.Argument(None, help="Note ID, journal date, or title keyword (defaults to today's journal)"),
     full: bool = typer.Option(False, "--full", "-f", help="Copy full markdown file including YAML frontmatter"),
+    password: Optional[str] = typer.Option(None, "-p", "--password", help="Password for encrypted note"),
 ) -> None:
     config, storage, db, indexer = get_services()
     if identifier:
@@ -193,6 +258,14 @@ def copy_cmd(
 
     if full and note.filepath:
         content = note.filepath.read_text(encoding="utf-8")
+    elif note.encrypted:
+        if not password:
+            password = typer.prompt(f"Password for note '{note.title}'", hide_input=True)
+        try:
+            content = storage.unlock_note(note, password)
+        except Exception:
+            console.print("[bold red]Error:[/bold red] Incorrect password.")
+            raise typer.Exit(code=1)
     else:
         content = note.body
 
