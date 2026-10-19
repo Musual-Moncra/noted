@@ -37,7 +37,8 @@ class DatabaseManager:
                 type TEXT NOT NULL,
                 tags TEXT NOT NULL,
                 mtime_ns INTEGER NOT NULL,
-                size_bytes INTEGER NOT NULL
+                size_bytes INTEGER NOT NULL,
+                encrypted INTEGER DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS note_tags (
@@ -55,3 +56,9 @@ class DatabaseManager:
                 tokenize='porter unicode61'
             );
             """)
+            # Migration check for existing databases
+            cursor = conn.execute("PRAGMA table_info(notes);")
+            columns = [row["name"] for row in cursor.fetchall()]
+            if "encrypted" not in columns:
+                conn.execute("ALTER TABLE notes ADD COLUMN encrypted INTEGER DEFAULT 0;")
+

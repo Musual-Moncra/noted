@@ -106,3 +106,25 @@ def test_get_note_by_id_or_date(indexer_setup):
 
     # Lookup non-existent
     assert indexer.get_note_by_id_or_date("nonexistent-id") is None
+
+def test_encrypted_indexing(indexer_setup):
+    config, storage, db, indexer = indexer_setup
+    note = storage.create_note(title="Secret Financials", body="Bank account number 987654321", tags=["private"])
+    storage.lock_note(note, "MySecretPass")
+    indexer.sync_all()
+
+    # Search by secret term in plaintext body MUST return 0 results
+    res_secret = indexer.search("987654321")
+    assert len(res_secret) == 0
+
+    # Search by title still works
+    res_title = indexer.search("Financials")
+    assert len(res_title) == 1
+    assert res_title[0].note.encrypted is True
+    assert "[🔒 Encrypted note]" in res_title[0].snippet or "Financials" in res_title[0].snippet
+
+    # List notes preserves encrypted flag
+    summaries = indexer.list_notes()
+    assert len(summaries) == 1
+    assert summaries[0].encrypted is True
+

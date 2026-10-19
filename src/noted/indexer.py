@@ -23,11 +23,14 @@ class NoteIndexer:
         tags_json = json.dumps(note.tags)
         tags_str = " ".join(note.tags)
 
+        is_encrypted = 1 if note.encrypted else 0
+        fts_body = "[🔒 Encrypted note]" if note.encrypted else note.body
+
         with self.db.get_connection() as conn:
             conn.execute(
                 """
-                INSERT INTO notes (id, filepath, title, date, type, tags, mtime_ns, size_bytes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO notes (id, filepath, title, date, type, tags, mtime_ns, size_bytes, encrypted)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     filepath = excluded.filepath,
                     title = excluded.title,
@@ -35,7 +38,8 @@ class NoteIndexer:
                     type = excluded.type,
                     tags = excluded.tags,
                     mtime_ns = excluded.mtime_ns,
-                    size_bytes = excluded.size_bytes;
+                    size_bytes = excluded.size_bytes,
+                    encrypted = excluded.encrypted;
                 """,
                 (
                     note.id,
@@ -46,6 +50,7 @@ class NoteIndexer:
                     tags_json,
                     mtime_ns,
                     size_bytes,
+                    is_encrypted,
                 ),
             )
 
@@ -61,7 +66,7 @@ class NoteIndexer:
             conn.execute("DELETE FROM notes_fts WHERE id = ?", (note.id,))
             conn.execute(
                 "INSERT INTO notes_fts (id, title, body, tags) VALUES (?, ?, ?, ?)",
-                (note.id, note.title, note.body, tags_str),
+                (note.id, note.title, fts_body, tags_str),
             )
 
     def remove_note(self, note_id: str) -> None:
@@ -121,7 +126,7 @@ class NoteIndexer:
                     """
                     SELECT fts.id,
                            snippet(notes_fts, 2, '[[HIGHLIGHT]]', '[[/HIGHLIGHT]]', '...', 15) as snip,
-                           n.filepath, n.title, n.date, n.type, n.tags
+                           n.filepath, n.title, n.date, n.type, n.tags, n.encrypted
                     FROM notes_fts fts
                     JOIN notes n ON n.id = fts.id
                     WHERE notes_fts MATCH ?
@@ -133,6 +138,7 @@ class NoteIndexer:
 
                 for row in rows:
                     tags = json.loads(row["tags"]) if row["tags"] else []
+                    is_enc = bool(row["encrypted"]) if "encrypted" in row.keys() else False
                     summary = NoteSummary(
                         id=row["id"],
                         title=row["title"],
@@ -140,10 +146,12 @@ class NoteIndexer:
                         note_type=row["type"],
                         tags=tags,
                         filepath=Path(row["filepath"]),
+                        encrypted=is_enc,
                     )
                     raw_snippet = row["snip"] or ""
-                    # Fallback snippet if body didn't produce one (e.g. matched title)
-                    if not raw_snippet:
+                    if is_enc:
+                        raw_snippet = "[🔒 Encrypted note]"
+                    elif not raw_snippet:
                         raw_snippet = f"Matched in {row['title']}"
                     results.append(SearchResult(note=summary, snippet=raw_snippet))
             except Exception:
@@ -158,7 +166,7 @@ class NoteIndexer:
         limit: int = 50,
     ) -> list[NoteSummary]:
         """Lists notes matching filters, sorted by date descending."""
-        query = "SELECT n.id, n.filepath, n.title, n.date, n.type, n.tags FROM notes n"
+        query = "SELECT n.id, n.filepath, n.title, n.date, n.type, n.tags, n.encrypted FROM notes n"
         params: list[Any] = []
         conditions: list[str] = []
 
@@ -182,6 +190,7 @@ class NoteIndexer:
             rows = conn.execute(query, params).fetchall()
             for row in rows:
                 tags = json.loads(row["tags"]) if row["tags"] else []
+                is_enc = bool(row["encrypted"]) if "encrypted" in row.keys() else False
                 results.append(
                     NoteSummary(
                         id=row["id"],
@@ -190,10 +199,12 @@ class NoteIndexer:
                         note_type=row["type"],
                         tags=tags,
                         filepath=Path(row["filepath"]),
+                        encrypted=is_enc,
                     )
                 )
 
         return results
+
 
     def get_note_by_id_or_date(self, identifier: str) -> Note | None:
         """Finds a note by exact ID or journal date (YYYY-MM-DD), returning the loaded Note."""
