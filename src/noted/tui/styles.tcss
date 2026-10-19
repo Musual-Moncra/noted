@@ -213,3 +213,34 @@ ModalScreen {
     background: $primary;
     color: $text;
 }
+
+#locked-note-card {
+    width: 100%;
+    max-width: 50;
+    height: auto;
+    background: $surface;
+    border: thick $primary;
+    padding: 0 1;
+    margin: 0 1;
+    align: center middle;
+}
+
+#locked-card-title {
+    text-style: bold;
+    color: $primary;
+    margin-bottom: 0;
+    content-align: center middle;
+}
+
+#locked-card-desc {
+    content-align: center middle;
+    margin-bottom: 1;
+}
+
+#btn-screen-unlock {
+    min-width: 22;
+    height: 3;
+    content-align: center middle;
+    text-style: bold;
+}
+

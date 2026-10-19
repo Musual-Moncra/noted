@@ -376,4 +376,81 @@ async def test_header_and_toolbar_dimensions(tmp_path, monkeypatch):
         total_btn_w = sum(btn.size.width for btn in toolbar.children)
         assert total_btn_w <= 45
 
+@pytest.mark.asyncio
+async def test_tui_unlock_and_lock_note(tmp_path, monkeypatch):
+    from noted.tui.screens import UnlockNoteModal, LockNoteModal
+    notes_dir = tmp_path / "tui_unlock_test"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    storage.create_note(title="Public Note", body="Open Public Content")
+    note = storage.create_note(title="Private Note", body="Top Secret Content 123")
+    storage.lock_note(note, "Pass123!")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        assert app.current_note is not None
+        assert app.current_note.encrypted is True
+
+        # Check locked card is visible
+        locked_card = app.query_one("#locked-note-card")
+        assert locked_card.display is True
+
+        # Test wrong password
+        await pilot.click("#btn-screen-unlock")
+        await pilot.pause()
+        assert isinstance(app.screen, UnlockNoteModal)
+        pwd_input = app.screen.query_one("#input-unlock-password")
+        pwd_input.value = "WrongPassword"
+        await pilot.press("enter")
+        await pilot.pause()
+
+        # Still locked
+        assert locked_card.display is True
+        assert app.current_note.id not in app.unlocked_notes
+
+        # Click unlock button again with correct password
+        await pilot.click("#btn-screen-unlock")
+        await pilot.pause()
+        assert isinstance(app.screen, UnlockNoteModal)
+        pwd_input = app.screen.query_one("#input-unlock-password")
+        pwd_input.value = "Pass123!"
+        await pilot.press("enter")
+        await pilot.pause()
+
+        # Should be unlocked
+        assert locked_card.display is False
+        viewer = app.query_one("#markdown-viewer")
+        assert viewer.display is True
+        assert "Top Secret Content 123" in app.unlocked_notes[app.current_note.id]
+
+        # Switch to Public Note and lock it
+        await pilot.press("down")
+        await pilot.press("enter")
+        await pilot.pause()
+        assert app.current_note.title == "Public Note"
+        assert app.current_note.encrypted is False
+
+        # Trigger lock modal via key 'l'
+        await pilot.press("l")
+        await pilot.pause()
+        assert isinstance(app.screen, LockNoteModal)
+        p1 = app.screen.query_one("#input-lock-pass1")
+        p2 = app.screen.query_one("#input-lock-pass2")
+        p1.value = "NewSecret99"
+        p2.value = "NewSecret99"
+        await pilot.click("#btn-confirm-lock")
+        await pilot.pause()
+
+        # Public Note should now be locked and encrypted
+        assert app.current_note.encrypted is True
+        # In current session, locking a note keeps it unlocked in session cache
+        assert app.current_note.id in app.unlocked_notes
+
+
 

@@ -94,7 +94,103 @@ class RenameNoteModal(ModalScreen[Optional[str]]):
         self.dismiss(title)
 
 
+class UnlockNoteModal(ModalScreen[Optional[str]]):
+    """Modal dialog to enter password to unlock an encrypted note."""
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel", priority=True),
+    ]
+
+    def __init__(self, note_title: str):
+        super().__init__()
+        self.note_title = note_title
+
+    def compose(self) -> ComposeResult:
+        with Vertical(classes="modal-dialog"):
+            yield Label("🔓 Mở Khóa Ghi Chú", classes="dialog-title")
+            yield Static(f"Ghi chú: [bold cyan]{self.note_title}[/bold cyan]")
+            yield Label("Mật khẩu:")
+            yield VietnameseInput(password=True, placeholder="Nhập mật khẩu...", id="input-unlock-password")
+            with Horizontal(classes="modal-buttons"):
+                yield Button("Cancel", id="btn-cancel", variant="default")
+                yield Button("Mở khóa", id="btn-unlock", variant="primary")
+
+    def on_mount(self) -> None:
+        self.query_one("#input-unlock-password", VietnameseInput).focus()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-unlock":
+            self._submit()
+        elif event.button.id == "btn-cancel":
+            self.dismiss(None)
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        self._submit()
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def _submit(self) -> None:
+        pwd = self.query_one("#input-unlock-password", VietnameseInput).value
+        self.dismiss(pwd if pwd else None)
+
+
+class LockNoteModal(ModalScreen[Optional[str]]):
+    """Modal dialog to set a password on an unencrypted note."""
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel", priority=True),
+    ]
+
+    def __init__(self, note_title: str):
+        super().__init__()
+        self.note_title = note_title
+
+    def compose(self) -> ComposeResult:
+        with Vertical(classes="modal-dialog"):
+            yield Label("🔒 Đặt Mật Khẩu Bảo Vệ Ghi Chú", classes="dialog-title")
+            yield Static(f"Ghi chú: [bold cyan]{self.note_title}[/bold cyan]")
+            yield Label("Mật khẩu mới:")
+            yield VietnameseInput(password=True, placeholder="Nhập mật khẩu...", id="input-lock-pass1")
+            yield Label("Xác nhận mật khẩu:")
+            yield VietnameseInput(password=True, placeholder="Nhập lại mật khẩu...", id="input-lock-pass2")
+            yield Static("", id="lock-error-msg", classes="error-msg")
+            with Horizontal(classes="modal-buttons"):
+                yield Button("Cancel", id="btn-cancel", variant="default")
+                yield Button("Khóa ghi chú", id="btn-confirm-lock", variant="primary")
+
+    def on_mount(self) -> None:
+        self.query_one("#input-lock-pass1", VietnameseInput).focus()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-confirm-lock":
+            self._submit()
+        elif event.button.id == "btn-cancel":
+            self.dismiss(None)
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id == "input-lock-pass1":
+            self.query_one("#input-lock-pass2", VietnameseInput).focus()
+        else:
+            self._submit()
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def _submit(self) -> None:
+        p1 = self.query_one("#input-lock-pass1", VietnameseInput).value
+        p2 = self.query_one("#input-lock-pass2", VietnameseInput).value
+        if not p1:
+            self.query_one("#lock-error-msg", Static).update("[bold red]Mật khẩu không được để trống![/bold red]")
+            return
+        if p1 != p2:
+            self.query_one("#lock-error-msg", Static).update("[bold red]Mật khẩu xác nhận không khớp![/bold red]")
+            return
+        self.dismiss(p1)
+
+
 class ConfirmDeleteModal(ModalScreen[bool]):
+
     """Confirmation modal before deleting a note."""
 
     BINDINGS = [
@@ -151,6 +247,8 @@ class HelpModal(ModalScreen[None]):
         ("[bold cyan]ctrl+e[/bold cyan]", "Open note in external $EDITOR"),
         ("[bold cyan]c / ctrl+y[/bold cyan]", "Copy note content or selection to Clipboard"),
         ("[bold cyan]r[/bold cyan]", "Rename currently open note"),
+        ("[bold cyan]u[/bold cyan]", "Unlock password-protected note"),
+        ("[bold cyan]l[/bold cyan]", "Lock / protect note with password"),
         ("[bold cyan]d[/bold cyan]", "Delete current note"),
         ("[bold cyan]/[/bold cyan]", "Focus search bar"),
         ("[bold cyan]?[/bold cyan]", "Show this help screen"),

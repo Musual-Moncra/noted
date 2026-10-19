@@ -22,6 +22,7 @@ from textual.widgets import (
     Footer,
     Header,
     Input,
+    Label,
     ListView,
     Markdown,
     Static,
@@ -33,8 +34,17 @@ from noted.editor import open_in_editor
 from noted.indexer import NoteIndexer
 from noted.models import Note, NoteSummary
 from noted.storage import StorageManager
-from noted.tui.screens import ColorFormatModal, ConfirmDeleteModal, HelpModal, NewNoteModal, RenameNoteModal
+from noted.tui.screens import (
+    ColorFormatModal,
+    ConfirmDeleteModal,
+    HelpModal,
+    LockNoteModal,
+    NewNoteModal,
+    RenameNoteModal,
+    UnlockNoteModal,
+)
 from noted.tui.widgets import MetadataHeader, NoteListItem, VietnameseInput, VietnameseTextArea
+
 
 class NotedApp(App[None]):
     """Main interactive Textual Terminal Application for noted."""
@@ -63,6 +73,7 @@ class NotedApp(App[None]):
         Binding("ctrl+y", "copy_content", "Copy", show=False, priority=True),
         Binding("r", "rename_note", "Rename", show=True),
         Binding("u", "unlock_note", "Unlock", show=True),
+        Binding("l", "lock_note", "Lock", show=True),
         Binding("d", "delete_note", "Delete", show=True),
         Binding("slash", "focus_search", "Search", show=True),
         Binding("escape", "exit_edit_mode", "View/List", show=False, priority=True),
@@ -110,9 +121,18 @@ class NotedApp(App[None]):
                             yield Button("🎨", id="btn-fmt-color", classes="fmt-btn")
                         yield VietnameseTextArea(id="text-editor", language="markdown")
                     with Container(id="view-container"):
+                        with Vertical(id="locked-note-card"):
+                            yield Label("🔒 GHI CHÚ ĐÃ ĐƯỢC BẢO VỆ", id="locked-card-title")
+                            yield Static(
+                                "Ghi chú đã được mã hóa an toàn bằng AES-256.\n"
+                                "Nhấn nút bên dưới hoặc phím [b]u[/b] để mở khóa:",
+                                id="locked-card-desc",
+                            )
+                            yield Button("🔓 Mở khóa ghi chú", id="btn-screen-unlock", variant="primary")
                         yield Markdown(id="markdown-viewer")
 
         yield Footer()
+
 
     def on_mount(self) -> None:
         # Explicitly instruct terminal to exit any active Kitty keyboard protocol state
@@ -129,9 +149,9 @@ class NotedApp(App[None]):
         self.indexer = NoteIndexer(self.db, self.storage)
         self.indexer.sync_all()
 
-        # Initial view state: Markdown view active, TextArea hidden
-        self.set_mode("view")
+        # Initial view state: populate list first so note is loaded, then activate View mode
         self.refresh_notes_list()
+        self.set_mode("view")
         self.query_one("#notes-list", ListView).focus()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
@@ -168,10 +188,34 @@ class NotedApp(App[None]):
             self.current_note = self.indexer.get_note_by_id_or_date(summary.id)
 
         if self.current_note:
-            body = self.current_note.body or "*Empty note.*"
-            self.query_one("#markdown-viewer", Markdown).update(body)
-            self.query_one("#text-editor", TextArea).text = self.current_note.body
-            self.query_one("#metadata-header", MetadataHeader).update_metadata(self.current_note, self.note_mode)
+            is_unlocked = False
+            if self.current_note.encrypted:
+                if self.current_note.id in self.unlocked_notes:
+                    is_unlocked = True
+                    body = self.unlocked_notes[self.current_note.id] or "*Empty note.*"
+                else:
+                    body = ""
+            else:
+                body = self.current_note.body or "*Empty note.*"
+
+            locked_card = self.query_one("#locked-note-card")
+            viewer = self.query_one("#markdown-viewer", Markdown)
+            editor = self.query_one("#text-editor", TextArea)
+
+            if self.current_note.encrypted and not is_unlocked:
+                locked_card.display = True
+                viewer.display = False
+                editor.text = ""
+            else:
+                locked_card.display = False
+                viewer.display = True
+                viewer.update(body)
+                editor.text = body if body != "*Empty note.*" else ""
+
+            self.query_one("#metadata-header", MetadataHeader).update_metadata(
+                self.current_note, self.note_mode, is_unlocked=is_unlocked
+            )
+
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         if isinstance(event.item, NoteListItem):
@@ -221,11 +265,7 @@ class NotedApp(App[None]):
 
     def set_mode(self, mode: str) -> None:
         """Switches between 'view', 'edit', and 'split' mode with automatic saving."""
-        if not self.current_note:
-            return
-
-        # Auto-save when leaving edit or split mode to view mode
-        if self.note_mode in ["edit", "split"] and mode == "view":
+        if self.note_mode in ["edit", "split"] and mode == "view" and self.current_note:
             self.save_current_note(silent=True)
 
         self.note_mode = mode
@@ -233,23 +273,54 @@ class NotedApp(App[None]):
         edit_container = self.query_one("#edit-container")
         editor = self.query_one("#text-editor", TextArea)
         viewer = self.query_one("#markdown-viewer", Markdown)
+        locked_card = self.query_one("#locked-note-card")
+
+        if not self.current_note:
+            if mode == "view":
+                edit_container.display = False
+                view_container.display = True
+            elif mode == "edit":
+                edit_container.display = True
+                view_container.display = False
+            elif mode == "split":
+                edit_container.display = True
+                view_container.display = True
+            return
 
         if mode == "view":
-            viewer.update(editor.text or "*Empty note.*")
+            if self.current_note.encrypted and self.current_note.id not in self.unlocked_notes:
+                locked_card.display = True
+                viewer.display = False
+            else:
+                locked_card.display = False
+                viewer.display = True
+                viewer.update(editor.text or "*Empty note.*")
             edit_container.display = False
             view_container.display = True
             self.query_one("#notes-list", ListView).focus()
         elif mode == "edit":
+            if self.current_note.encrypted and self.current_note.id not in self.unlocked_notes:
+                self.notify("Vui lòng mở khóa ghi chú trước khi soạn thảo.", severity="warning")
+                self.action_unlock_note()
+                return
             edit_container.display = True
             view_container.display = False
             editor.focus()
         elif mode == "split":
+            if self.current_note.encrypted and self.current_note.id not in self.unlocked_notes:
+                self.notify("Vui lòng mở khóa ghi chú trước khi soạn thảo.", severity="warning")
+                self.action_unlock_note()
+                return
+            locked_card.display = False
+            viewer.display = True
             viewer.update(editor.text or "*Empty note.*")
             edit_container.display = True
             view_container.display = True
             editor.focus()
 
-        self.query_one("#metadata-header", MetadataHeader).update_metadata(self.current_note, self.note_mode)
+        is_unlocked = bool(self.current_note and self.current_note.id in self.unlocked_notes)
+        self.query_one("#metadata-header", MetadataHeader).update_metadata(self.current_note, self.note_mode, is_unlocked=is_unlocked)
+
 
     def action_toggle_edit(self) -> None:
         """Toggles between View and Edit mode with automatic saving."""
@@ -297,16 +368,31 @@ class NotedApp(App[None]):
             return
 
         editor = self.query_one("#text-editor", TextArea)
-        self.current_note.body = unicodedata.normalize("NFC", editor.text)
-        self.storage.save_note(self.current_note)
+        raw_text = unicodedata.normalize("NFC", editor.text)
+
+        if self.current_note.encrypted:
+            session_pwd = getattr(self, "session_passwords", {}).get(self.current_note.id)
+            if session_pwd:
+                self.current_note.body = raw_text
+                self.storage.lock_note(self.current_note, session_pwd)
+                self.unlocked_notes[self.current_note.id] = raw_text
+            else:
+                self.current_note.body = raw_text
+                self.storage.save_note(self.current_note)
+        else:
+            self.current_note.body = raw_text
+            self.storage.save_note(self.current_note)
+
         self.indexer.index_note(self.current_note)
 
         # Update viewer
-        self.query_one("#markdown-viewer", Markdown).update(self.current_note.body or "*Empty note.*")
+        display_body = raw_text or "*Empty note.*"
+        self.query_one("#markdown-viewer", Markdown).update(display_body)
         if not silent:
             self.notify("Đã lưu ghi chú thành công!", title="Saved", severity="information")
         else:
             self.notify("Tự động lưu ✓", severity="information")
+
 
     def action_save_note(self) -> None:
         """Manual save via Ctrl+S or Save button."""
@@ -494,6 +580,83 @@ class NotedApp(App[None]):
             self.action_copy_content()
         elif btn_id == "btn-mode-rename":
             self.action_rename_note()
+        elif btn_id in ("btn-screen-unlock", "btn-mode-lock"):
+            if self.current_note and self.current_note.encrypted:
+                if self.current_note.id in self.unlocked_notes:
+                    self.notify("Ghi chú đã được mở khóa trong phiên hiện tại.", severity="information")
+                else:
+                    self.action_unlock_note()
+            else:
+                self.action_lock_note()
+
+    def action_unlock_note(self) -> None:
+        """Opens modal to unlock current encrypted note."""
+        if not self.current_note or not self.current_note.encrypted:
+            self.notify("Ghi chú này không bị khóa mật khẩu.", severity="information")
+            return
+
+        if self.current_note.id in self.unlocked_notes:
+            self.notify("Ghi chú này đã được mở khóa trong phiên hiện tại.", severity="information")
+            return
+
+        def handle_unlock(password: Optional[str]) -> None:
+            if not password:
+                return
+
+            try:
+                decrypted = self.storage.unlock_note(self.current_note, password)
+                if not hasattr(self, "session_passwords"):
+                    self.session_passwords = {}
+                self.session_passwords[self.current_note.id] = password
+                self.unlocked_notes[self.current_note.id] = decrypted
+
+                self.query_one("#locked-note-card").display = False
+                viewer = self.query_one("#markdown-viewer", Markdown)
+                viewer.display = True
+                viewer.update(decrypted or "*Empty note.*")
+                self.query_one("#text-editor", TextArea).text = decrypted
+                self.query_one("#metadata-header", MetadataHeader).update_metadata(
+                    self.current_note, self.note_mode, is_unlocked=True
+                )
+                self.refresh_notes_list(select_id=self.current_note.id)
+                self.query_one("#notes-list", ListView).focus()
+                self.notify("Đã mở khóa ghi chú thành công! ✓", title="Unlocked", severity="information")
+            except Exception:
+                self.notify("Sai mật khẩu! Không thể mở khóa.", title="Error", severity="error")
+
+        self.push_screen(UnlockNoteModal(self.current_note.title), handle_unlock)
+
+    def action_lock_note(self) -> None:
+        """Opens modal to lock or re-lock the current note."""
+        if not self.current_note:
+            self.notify("Không có ghi chú nào được chọn.", severity="warning")
+            return
+
+        if self.current_note.encrypted and self.current_note.id not in self.unlocked_notes:
+            self.action_unlock_note()
+            return
+
+        def handle_lock(password: Optional[str]) -> None:
+            if not password:
+                return
+
+            if not hasattr(self, "session_passwords"):
+                self.session_passwords = {}
+            self.session_passwords[self.current_note.id] = password
+            plain_body = self.unlocked_notes.get(self.current_note.id, self.current_note.body)
+            self.current_note.body = plain_body
+            self.storage.lock_note(self.current_note, password)
+            self.indexer.index_note(self.current_note)
+            self.unlocked_notes[self.current_note.id] = plain_body
+
+            self.query_one("#metadata-header", MetadataHeader).update_metadata(
+                self.current_note, self.note_mode, is_unlocked=True
+            )
+            self.refresh_notes_list(select_id=self.current_note.id)
+            self.query_one("#notes-list", ListView).focus()
+            self.notify("Đã khóa ghi chú bằng mật khẩu thành công! ✓", title="Locked", severity="information")
+
+        self.push_screen(LockNoteModal(self.current_note.title), handle_lock)
 
     def action_copy_content(self) -> None:
         """Copies note content or current selection to the system clipboard."""
@@ -543,10 +706,14 @@ class NotedApp(App[None]):
             self.storage.rename_note(self.current_note, new_title)
             self.indexer.index_note(self.current_note)
 
-            self.query_one("#metadata-header", MetadataHeader).update_metadata(self.current_note, self.note_mode)
+            is_unlocked = bool(self.current_note.id in self.unlocked_notes)
+            self.query_one("#metadata-header", MetadataHeader).update_metadata(
+                self.current_note, self.note_mode, is_unlocked=is_unlocked
+            )
             self.refresh_notes_list(select_id=self.current_note.id)
             self.notify(f"Đã đổi tên: '{old_title}' → '{new_title}'", title="Renamed ✓", severity="information")
 
         self.push_screen(RenameNoteModal(self.current_note.title), handle_rename)
+
 
 
