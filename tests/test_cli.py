@@ -60,3 +60,16 @@ def test_cli_sync():
     res = runner.invoke(app, ["sync"])
     assert res.exit_code == 0
     assert "Synced" in res.stdout
+
+def test_cli_copy(monkeypatch):
+    runner.invoke(app, ["add", "Text for clipboard testing", "--title", "Copy Note"])
+    
+    # Mock clipboard
+    copied = []
+    monkeypatch.setattr("noted.clipboard.copy_to_clipboard", lambda text, app=None: copied.append(text) or True)
+
+    res = runner.invoke(app, ["copy", "Copy Note"])
+    assert res.exit_code == 0
+    assert "Copied note" in res.stdout
+    assert len(copied) == 1
+    assert "Text for clipboard testing" in copied[0]

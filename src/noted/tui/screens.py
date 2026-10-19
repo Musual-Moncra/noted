@@ -106,6 +106,7 @@ class HelpModal(ModalScreen[None]):
         ("[bold cyan]ctrl+h[/bold cyan]", "Insert markdown # Heading"),
         ("[bold cyan]ctrl+t[/bold cyan]", "Insert interactive - [ ] Todo checkbox"),
         ("[bold cyan]ctrl+e[/bold cyan]", "Open note in external $EDITOR"),
+        ("[bold cyan]c / ctrl+y[/bold cyan]", "Copy note content or selection to Clipboard"),
         ("[bold cyan]d[/bold cyan]", "Delete current note"),
         ("[bold cyan]/[/bold cyan]", "Focus search bar"),
         ("[bold cyan]?[/bold cyan]", "Show this help screen"),

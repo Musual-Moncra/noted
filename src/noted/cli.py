@@ -175,5 +175,36 @@ def sync_cmd() -> None:
     count = indexer.sync_all()
     console.print(f"[bold green]✓[/bold green] Synced index. Re-indexed [bold cyan]{count}[/bold cyan] note(s).")
 
+@app.command(name="copy", help="Copy a note's content directly to the system clipboard.")
+@app.command(name="cp", hidden=True)
+def copy_cmd(
+    identifier: Optional[str] = typer.Argument(None, help="Note ID, journal date, or title keyword (defaults to today's journal)"),
+    full: bool = typer.Option(False, "--full", "-f", help="Copy full markdown file including YAML frontmatter"),
+) -> None:
+    config, storage, db, indexer = get_services()
+    if identifier:
+        note = indexer.get_note_by_id_or_date(identifier)
+    else:
+        note = storage.get_or_create_today_journal()
+
+    if not note:
+        console.print(f"[bold red]Error:[/bold red] Note matching '[yellow]{identifier}[/yellow]' not found.")
+        raise typer.Exit(code=1)
+
+    if full and note.filepath:
+        content = note.filepath.read_text(encoding="utf-8")
+    else:
+        content = note.body
+
+    from noted.clipboard import copy_to_clipboard
+    if copy_to_clipboard(content):
+        preview = content[:60].replace("\n", " ") + "..." if len(content) > 60 else content.replace("\n", " ")
+        console.print(f"[bold green]✓[/bold green] Copied note [bold cyan]{note.id}[/bold cyan] ([bold white]{note.title}[/bold white]) to clipboard!")
+        if preview:
+            console.print(f"[dim]Content: {preview}[/dim]")
+    else:
+        console.print("[bold red]Failed to access system clipboard.[/bold red]")
+        raise typer.Exit(code=1)
+
 if __name__ == "__main__":
     app()

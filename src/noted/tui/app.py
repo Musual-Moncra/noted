@@ -59,6 +59,8 @@ class NotedApp(App[None]):
         Binding("ctrl+t", "format_todo", "Todo", show=False, priority=True),
         Binding("ctrl+m", "format_color", "Color", show=False, priority=True),
         Binding("ctrl+e", "open_external", "$EDITOR", show=True),
+        Binding("c", "copy_content", "Copy", show=True),
+        Binding("ctrl+y", "copy_content", "Copy", show=False, priority=True),
         Binding("d", "delete_note", "Delete", show=True),
         Binding("slash", "focus_search", "Search", show=True),
         Binding("escape", "exit_edit_mode", "View/List", show=False, priority=True),
@@ -103,6 +105,7 @@ class NotedApp(App[None]):
                             yield Button("❝ Quote", id="btn-fmt-quote", classes="fmt-btn")
                             yield Button("💡 Tip/Callout", id="btn-fmt-callout", classes="fmt-btn")
                             yield Button("🎨 Màu sắc", id="btn-fmt-color", classes="fmt-btn")
+                            yield Button("📋 Copy", id="btn-fmt-copy", classes="fmt-btn")
                         yield VietnameseTextArea(id="text-editor", language="markdown")
                     with Container(id="view-container"):
                         yield Markdown(id="markdown-viewer")
@@ -484,4 +487,40 @@ class NotedApp(App[None]):
             self.action_format_callout()
         elif btn_id == "btn-fmt-color":
             self.action_format_color()
+        elif btn_id in ("btn-mode-copy", "btn-fmt-copy"):
+            self.action_copy_content()
+
+    def action_copy_content(self) -> None:
+        """Copies note content or current selection to the system clipboard."""
+        if not self.current_note:
+            self.notify("Không có ghi chú nào để copy.", severity="warning")
+            return
+
+        text_to_copy = ""
+        is_selection = False
+
+        if self.note_mode in ["edit", "split"]:
+            try:
+                editor = self.query_one("#text-editor", VietnameseTextArea)
+                if editor.selected_text:
+                    text_to_copy = editor.selected_text
+                    is_selection = True
+                else:
+                    text_to_copy = editor.text
+            except Exception:
+                text_to_copy = self.current_note.body
+        else:
+            text_to_copy = self.current_note.body
+
+        if not text_to_copy:
+            text_to_copy = self.current_note.title or ""
+
+        from noted.clipboard import copy_to_clipboard
+        if copy_to_clipboard(text_to_copy, app=self):
+            if is_selection:
+                self.notify("Đã copy đoạn chọn vào Clipboard! ✓", title="Copied", severity="information")
+            else:
+                self.notify(f"Đã copy nội dung ghi chú vào Clipboard! ✓", title="Copied", severity="information")
+        else:
+            self.notify("Không thể truy cập Clipboard hệ thống.", severity="error")
 

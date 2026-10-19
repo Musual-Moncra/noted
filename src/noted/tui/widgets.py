@@ -36,6 +36,15 @@ class VietnameseTextArea(TextArea):
             insert = unicodedata.normalize("NFC", insert)
         return super().replace(insert, start, end, maintain_selection_offset=maintain_selection_offset)
 
+    def action_copy(self) -> None:
+        """Copy selected text (or entire content if nothing selected) to system clipboard."""
+        from noted.clipboard import copy_to_clipboard
+        text = self.selected_text or self.text
+        if text:
+            if copy_to_clipboard(text, app=self.app):
+                msg = "Đã copy đoạn chọn vào Clipboard! ✓" if self.selected_text else "Đã copy nội dung vào Clipboard! ✓"
+                self.notify(msg, severity="information")
+
     async def _on_key(self, event: events.Key) -> None:
         """Synchronously handle editing keys at the widget level.
 
@@ -177,6 +186,7 @@ class MetadataHeader(Horizontal):
             yield Button("👁 Xem (Ctrl+P)", id="btn-mode-view", classes="mode-btn -active")
             yield Button("📝 Soạn", id="btn-mode-edit", classes="mode-btn")
             yield Button("◫ Song song", id="btn-mode-split", classes="mode-btn")
+            yield Button("📋 Copy", id="btn-mode-copy", classes="mode-btn")
             yield Button("🚀 Mở Editor", id="btn-mode-ext", classes="mode-btn")
             yield Button("💾 Lưu", id="btn-mode-save", classes="mode-btn")
 
