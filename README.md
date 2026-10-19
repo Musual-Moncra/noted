@@ -7,23 +7,27 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)](https://github.com/Musual-Moncra/noted)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-44%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-75%20passed-brightgreen.svg)]()
 
 ---
 
 ## Features
 
 - **Zero Lock-in**: All notes live in local Markdown files with YAML frontmatter (`~/.local/share/notes` on Linux/macOS, `~/.notes` or `%USERPROFILE%\.notes` on Windows). No proprietary database lock-in. Easily versionable with Git or searchable with `ripgrep`.
+- **AES-256-GCM Password Protection**: Encrypt sensitive notes at rest using authenticated AES-256-GCM with PBKDF2-HMAC-SHA256 (100k rounds). Session-level in-memory unlocking keeps plaintext confidential without leaking secrets to disk logs or SQLite FTS5 search indexes.
 - **Full Interactive TUI (`note` / `note ui`)**: Split-pane terminal interface built with Textual:
-  - Sidebar with instant search and note list
-  - In-terminal Markdown viewer with rich formatting
+  - Sidebar with instant search, notes list, and lock status badges (🔒 / 📓 / 📝)
+  - In-terminal Markdown viewer with rich formatting and prominent locked-note cards
   - Live in-terminal `TextArea` editor with instant `Ctrl+S` saving
-  - Interactive formatting toolbar & keyboard shortcuts for bold, italics, code, headings, checkboxes, quotes, and callouts
+  - Interactive formatting toolbar & keyboard shortcuts for bold, italics, code, headings, checkboxes, quotes, color highlights, and copy
   - **Live Split-Screen (`Ctrl+W`)**: Real-time side-by-side editing and rendering
   - **Zero-Friction Auto-Save**: Switching modes (`Ctrl+P`, `F2`, `Escape`) or clicking another note auto-saves your work immediately!
+  - **Vietnamese IME Smoothness**: Automatic Unicode NFC normalization, combining mark support, and disabled Kitty keyboard protocol for flawless Telex/EVKey/OpenKey typing.
+- **Clipboard Integration**: Copy full note or current editor selection to the system clipboard via `c` / `Ctrl+Y` or `note copy`.
+- **Safe Note Renaming**: Rename notes on the fly with `r` or `note rename`—automatically updates frontmatter, recalculates slug, and moves the disk file atomically.
 - **Instant Full-Text Search**: Built-in SQLite3 FTS5 virtual table indexing title, body, and tags with BM25 ranking and highlighted excerpts.
 - **Incremental Reconciliation**: Automatically detects when notes are modified or deleted outside the app (e.g. via Neovim, Obsidian, or Git) and synchronizes without requiring a background daemon.
-- **Cross-Platform CLI Subcommands**: Pipelining and quick terminal capture via `note add`, `note today`, `note list`, `note search`, `note view`, and `note edit`.
+- **Cross-Platform CLI Subcommands**: Pipelining and terminal capture via `note add`, `note lock`, `note unlock`, `note change-password`, `note copy`, `note rename`, `note today`, `note list`, `note search`, `note view`, and `note edit`.
 
 ---
 
@@ -94,6 +98,24 @@ note
 # Frictionless quick thought capture
 note add "Refactoring authentication flow with JWT tokens" -t dev,auth --title "Auth Flow"
 
+# Lock and encrypt a note with password
+note lock "Auth Flow" -p "SecretKey123"
+
+# View password-protected note (prompts for password if -p omitted)
+note view "Auth Flow" -p "SecretKey123"
+
+# Change the encryption password
+note change-password "Auth Flow"
+
+# Permanently decrypt and remove lock
+note unlock "Auth Flow"
+
+# Copy note content to system clipboard
+note copy "Auth Flow"
+
+# Rename an existing note (updates frontmatter, slug, and disk filename)
+note rename "Auth Flow" "New Auth Architecture"
+
 # View today's journal
 note today --view
 
@@ -107,11 +129,8 @@ note list --limit 15 --tag dev
 # Full-text search with highlighted excerpts
 note search "tokens"
 
-# View note formatted directly in the terminal
-note view "Auth Flow"
-
 # Open note in $EDITOR (Nano / Vim / Neovim)
-note edit "Auth Flow"
+note edit "New Auth Architecture"
 
 # Re-index all notes
 note sync
@@ -129,6 +148,10 @@ note sync
 | `Ctrl+S` | Save current edits manually |
 | `Escape` | Return to **View** mode (Auto-saves) / Focus notes list |
 | `n` | Create a new note dialog (Title + Tags) |
+| `r` | **Rename note** dialog (Atomic rename on disk & FTS5 re-index) |
+| `c` / `Ctrl+Y` | **Copy note or selection** to system clipboard |
+| `u` | **Unlock** password-protected note |
+| `l` | **Lock / Manage Lock** (Change password, Remove lock, Relock now) |
 | `j` | Open or create today's daily journal (`YYYY-MM-DD.md`) |
 | `Ctrl+B` | **Bold** selection or insert `**bold text**` |
 | `Ctrl+I` | *Italic* selection or insert `*italic text*` |
