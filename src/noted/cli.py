@@ -206,5 +206,23 @@ def copy_cmd(
         console.print("[bold red]Failed to access system clipboard.[/bold red]")
         raise typer.Exit(code=1)
 
+@app.command(name="rename", help="Rename an existing note.")
+@app.command(name="mv", hidden=True)
+def rename_cmd(
+    identifier: str = typer.Argument(..., help="Note ID, journal date, or title keyword"),
+    new_title: str = typer.Argument(..., help="New title for the note"),
+) -> None:
+    config, storage, db, indexer = get_services()
+    note = indexer.get_note_by_id_or_date(identifier)
+    if not note:
+        console.print(f"[bold red]Error:[/bold red] Note matching '[yellow]{identifier}[/yellow]' not found.")
+        raise typer.Exit(code=1)
+
+    old_title = note.title
+    storage.rename_note(note, new_title)
+    indexer.index_note(note)
+    console.print(f"[bold green]✓[/bold green] Renamed note [bold cyan]{note.id}[/bold cyan]: '[dim]{old_title}[/dim]' → [bold white]'{note.title}'[/bold white]")
+
 if __name__ == "__main__":
     app()
+

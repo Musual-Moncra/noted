@@ -1,5 +1,6 @@
 import os
 import tempfile
+import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 from noted.config import Config
@@ -47,6 +48,27 @@ class StorageManager:
         os.replace(temp_path, target_path)
         note.mtime_ns = target_path.stat().st_mtime_ns
         return target_path
+
+    def rename_note(self, note: Note, new_title: str) -> Path:
+        """Renames a note, updates its slug and filename on disk, and saves changes."""
+        clean_title = unicodedata.normalize("NFC", new_title.strip())
+        if not clean_title:
+            clean_title = "Untitled Note"
+
+        old_filepath = note.filepath
+        note.title = clean_title
+
+        if note.note_type != "journal":
+            new_slug = slugify(note.title)
+            new_filepath = self.get_note_path(note.id, new_slug)
+            if old_filepath and old_filepath != new_filepath and old_filepath.exists():
+                try:
+                    old_filepath.unlink(missing_ok=True)
+                except Exception:
+                    pass
+            note.filepath = new_filepath
+
+        return self.save_note(note)
 
     def read_note(self, filepath: Path) -> Note:
         """Reads a note from disk and parses its frontmatter and body."""

@@ -51,6 +51,49 @@ class NewNoteModal(ModalScreen[Optional[Tuple[str, list[str]]]]):
         self.dismiss((title, tags))
 
 
+class RenameNoteModal(ModalScreen[Optional[str]]):
+    """Modal dialog to rename an existing note."""
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel", priority=True),
+    ]
+
+    def __init__(self, current_title: str):
+        super().__init__()
+        self.current_title = current_title
+
+    def compose(self) -> ComposeResult:
+        with Vertical(classes="modal-dialog"):
+            yield Label("Rename Note", classes="dialog-title")
+            yield Label("New Title:")
+            yield VietnameseInput(value=self.current_title, placeholder="Enter new note title...", id="input-rename-title")
+            with Horizontal(classes="modal-buttons"):
+                yield Button("Cancel", id="btn-cancel", variant="default")
+                yield Button("Rename", id="btn-rename", variant="primary")
+
+    def on_mount(self) -> None:
+        inp = self.query_one("#input-rename-title", VietnameseInput)
+        inp.focus()
+        inp.cursor_position = len(inp.value)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-rename":
+            self._submit()
+        elif event.button.id == "btn-cancel":
+            self.dismiss(None)
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        self._submit()
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def _submit(self) -> None:
+        raw_title = self.query_one("#input-rename-title", VietnameseInput).value.strip()
+        title = unicodedata.normalize("NFC", raw_title) if raw_title else self.current_title
+        self.dismiss(title)
+
+
 class ConfirmDeleteModal(ModalScreen[bool]):
     """Confirmation modal before deleting a note."""
 
@@ -107,6 +150,7 @@ class HelpModal(ModalScreen[None]):
         ("[bold cyan]ctrl+t[/bold cyan]", "Insert interactive - [ ] Todo checkbox"),
         ("[bold cyan]ctrl+e[/bold cyan]", "Open note in external $EDITOR"),
         ("[bold cyan]c / ctrl+y[/bold cyan]", "Copy note content or selection to Clipboard"),
+        ("[bold cyan]r[/bold cyan]", "Rename currently open note"),
         ("[bold cyan]d[/bold cyan]", "Delete current note"),
         ("[bold cyan]/[/bold cyan]", "Focus search bar"),
         ("[bold cyan]?[/bold cyan]", "Show this help screen"),

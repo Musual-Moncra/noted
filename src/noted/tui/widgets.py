@@ -187,6 +187,7 @@ class MetadataHeader(Horizontal):
             yield Button("📝 Soạn", id="btn-mode-edit", classes="mode-btn")
             yield Button("◫ Song song", id="btn-mode-split", classes="mode-btn")
             yield Button("📋 Copy", id="btn-mode-copy", classes="mode-btn")
+            yield Button("✏ Đổi tên", id="btn-mode-rename", classes="mode-btn")
             yield Button("🚀 Mở Editor", id="btn-mode-ext", classes="mode-btn")
             yield Button("💾 Lưu", id="btn-mode-save", classes="mode-btn")
 

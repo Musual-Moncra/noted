@@ -33,7 +33,7 @@ from noted.editor import open_in_editor
 from noted.indexer import NoteIndexer
 from noted.models import Note, NoteSummary
 from noted.storage import StorageManager
-from noted.tui.screens import ColorFormatModal, ConfirmDeleteModal, HelpModal, NewNoteModal
+from noted.tui.screens import ColorFormatModal, ConfirmDeleteModal, HelpModal, NewNoteModal, RenameNoteModal
 from noted.tui.widgets import MetadataHeader, NoteListItem, VietnameseInput, VietnameseTextArea
 
 class NotedApp(App[None]):
@@ -61,6 +61,7 @@ class NotedApp(App[None]):
         Binding("ctrl+e", "open_external", "$EDITOR", show=True),
         Binding("c", "copy_content", "Copy", show=True),
         Binding("ctrl+y", "copy_content", "Copy", show=False, priority=True),
+        Binding("r", "rename_note", "Rename", show=True),
         Binding("d", "delete_note", "Delete", show=True),
         Binding("slash", "focus_search", "Search", show=True),
         Binding("escape", "exit_edit_mode", "View/List", show=False, priority=True),
@@ -489,6 +490,8 @@ class NotedApp(App[None]):
             self.action_format_color()
         elif btn_id in ("btn-mode-copy", "btn-fmt-copy"):
             self.action_copy_content()
+        elif btn_id == "btn-mode-rename":
+            self.action_rename_note()
 
     def action_copy_content(self) -> None:
         """Copies note content or current selection to the system clipboard."""
@@ -523,4 +526,25 @@ class NotedApp(App[None]):
                 self.notify(f"Đã copy nội dung ghi chú vào Clipboard! ✓", title="Copied", severity="information")
         else:
             self.notify("Không thể truy cập Clipboard hệ thống.", severity="error")
+
+    def action_rename_note(self) -> None:
+        """Opens modal to rename the currently loaded note."""
+        if not self.current_note:
+            self.notify("Không có ghi chú nào được chọn để đổi tên.", severity="warning")
+            return
+
+        def handle_rename(new_title: Optional[str]) -> None:
+            if not new_title or new_title == self.current_note.title:
+                return
+
+            old_title = self.current_note.title
+            self.storage.rename_note(self.current_note, new_title)
+            self.indexer.index_note(self.current_note)
+
+            self.query_one("#metadata-header", MetadataHeader).update_metadata(self.current_note, self.note_mode)
+            self.refresh_notes_list(select_id=self.current_note.id)
+            self.notify(f"Đã đổi tên: '{old_title}' → '{new_title}'", title="Renamed ✓", severity="information")
+
+        self.push_screen(RenameNoteModal(self.current_note.title), handle_rename)
+
 

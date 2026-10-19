@@ -73,3 +73,18 @@ def test_cli_copy(monkeypatch):
     assert "Copied note" in res.stdout
     assert len(copied) == 1
     assert "Text for clipboard testing" in copied[0]
+
+def test_cli_rename():
+    add_res = runner.invoke(app, ["add", "Rename me please", "--title", "Initial Name"])
+    assert add_res.exit_code == 0
+
+    rename_res = runner.invoke(app, ["rename", "Initial Name", "Brand New Title"])
+    assert rename_res.exit_code == 0
+    assert "Renamed note" in rename_res.stdout
+    assert "Brand New Title" in rename_res.stdout
+
+    # Verify via search/view
+    view_res = runner.invoke(app, ["view", "Brand New Title"])
+    assert view_res.exit_code == 0
+    assert "Rename me please" in view_res.stdout
+

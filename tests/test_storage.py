@@ -72,3 +72,22 @@ def test_list_note_files(storage):
     assert n1.filepath in all_files
     assert n2.filepath in all_files
     assert j1.filepath in all_files
+
+def test_rename_note(storage):
+    note = storage.create_note(title="Old Title", body="Body content")
+    old_path = note.filepath
+    assert old_path.exists()
+    assert "old-title" in old_path.name
+
+    new_path = storage.rename_note(note, "Tiêu Đề Mới (New Title)")
+    assert new_path.exists()
+    assert not old_path.exists()
+    assert note.title == "Tiêu Đề Mới (New Title)"
+    assert note.filepath == new_path
+
+    # Reload from disk
+    loaded = storage.read_note(new_path)
+    assert loaded.title == "Tiêu Đề Mới (New Title)"
+    assert loaded.body.strip() == "Body content"
+
+

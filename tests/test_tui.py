@@ -310,3 +310,43 @@ async def test_tui_color_format_modal(tmp_path, monkeypatch):
 
         editor = app.query_one("#text-editor")
         assert "[!TIP]" in editor.text
+
+@pytest.mark.asyncio
+async def test_tui_rename_note(tmp_path, monkeypatch):
+    from noted.tui.screens import RenameNoteModal
+    notes_dir = tmp_path / "tui_rename_note"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    n = storage.create_note(title="Old Note Title", body="Some content")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        assert app.current_note is not None
+        assert app.current_note.title == "Old Note Title"
+
+        # Press 'r' to open RenameNoteModal
+        await pilot.press("r")
+        await pilot.pause()
+
+        assert isinstance(app.screen, RenameNoteModal)
+        assert app.screen.styles.align_horizontal == "center"
+        assert app.screen.styles.align_vertical == "middle"
+
+        # Change title
+        inp = app.screen.query_one("#input-rename-title")
+        inp.value = "New Updated Title"
+        await pilot.press("enter")
+        await pilot.pause()
+
+        assert app.current_note.title == "New Updated Title"
+        # Check disk update
+        assert not n.filepath.exists()
+        assert app.current_note.filepath.exists()
+        assert "new-updated-title" in app.current_note.filepath.name
+
