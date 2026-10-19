@@ -6,3 +6,7 @@ __pycache__/
 dist/
 build/
 .superpowers/
+index.db
+*.log
+*.zip
+*.tar.gz

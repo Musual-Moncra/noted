@@ -15,9 +15,13 @@ def get_default_notes_dir() -> Path:
     env_dir = os.environ.get("NOTES_DIR")
     if env_dir:
         return Path(env_dir).expanduser().resolve()
+    if os.name == "nt":
+        return Path.home() / ".notes"
     return Path.home() / ".local" / "share" / "notes"
 
 def get_default_config_path() -> Path:
+    if os.name == "nt":
+        return Path.home() / ".notes" / "config.toml"
     return Path.home() / ".config" / "noted" / "config.toml"
 
 @dataclass

@@ -7,7 +7,7 @@ from rich.console import Console
 
 console = Console(stderr=True)
 
-FALLBACK_EDITORS = ["nano", "vim", "vi"]
+FALLBACK_EDITORS = ["notepad", "nano", "vim", "vi"] if os.name == "nt" else ["nano", "vim", "vi"]
 
 def find_editor(preferred: str | None = None) -> list[str] | None:
     """Finds an available terminal text editor command.
@@ -16,7 +16,7 @@ def find_editor(preferred: str | None = None) -> list[str] | None:
     1. Preferred editor parameter
     2. $EDITOR environment variable
     3. $VISUAL environment variable
-    4. nano / vim / vi fallbacks
+    4. nano / vim / vi / notepad fallbacks
     """
     candidates: list[str] = []
     if preferred:
@@ -28,7 +28,7 @@ def find_editor(preferred: str | None = None) -> list[str] | None:
     candidates.extend(FALLBACK_EDITORS)
 
     for cand in candidates:
-        parts = shlex.split(cand.strip())
+        parts = shlex.split(cand.strip(), posix=(os.name != "nt"))
         if not parts:
             continue
         exe = shutil.which(parts[0])

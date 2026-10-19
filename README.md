@@ -1,39 +1,82 @@
 # Noted (📓)
 
-> A fast, keyboard-first Terminal Note-Taking & Journaling CLI & TUI application for Unix & terminal enthusiasts.
+> A fast, keyboard-first Terminal Note-Taking & Journaling CLI & TUI application for Unix, macOS & Windows terminal enthusiasts.
 
+[![CI](https://github.com/Musual-Moncra/noted/actions/workflows/ci.yml/badge.svg)](https://github.com/Musual-Moncra/noted/actions/workflows/ci.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/Musual-Moncra/noted?color=blue&logo=github)](https://github.com/Musual-Moncra/noted/releases)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-39%20passed-brightgreen.svg)]()
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)](https://github.com/Musual-Moncra/noted)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-42%20passed-brightgreen.svg)]()
 
 ---
 
 ## Features
 
-- **Zero Lock-in**: All notes live in `~/.local/share/notes` as human-readable Markdown with YAML frontmatter. No proprietary database lock-in. Versionable with Git or searchable with `ripgrep`.
+- **Zero Lock-in**: All notes live in local Markdown files with YAML frontmatter (`~/.local/share/notes` on Linux/macOS, `~/.notes` or `%USERPROFILE%\.notes` on Windows). No proprietary database lock-in. Easily versionable with Git or searchable with `ripgrep`.
 - **Full Interactive TUI (`note` / `note ui`)**: Split-pane terminal interface built with Textual:
   - Sidebar with instant search and note list
   - In-terminal Markdown viewer with rich formatting
   - Live in-terminal `TextArea` editor with instant `Ctrl+S` saving
   - Interactive formatting toolbar & keyboard shortcuts for bold, italics, code, headings, checkboxes, quotes, and callouts
+  - **Live Split-Screen (`Ctrl+W`)**: Real-time side-by-side editing and rendering
+  - **Zero-Friction Auto-Save**: Switching modes (`Ctrl+P`, `F2`, `Escape`) or clicking another note auto-saves your work immediately!
 - **Instant Full-Text Search**: Built-in SQLite3 FTS5 virtual table indexing title, body, and tags with BM25 ranking and highlighted excerpts.
 - **Incremental Reconciliation**: Automatically detects when notes are modified or deleted outside the app (e.g. via Neovim, Obsidian, or Git) and synchronizes without requiring a background daemon.
-- **Unix CLI Subcommands**: Pipelining and quick terminal capture via `note add`, `note today`, `note list`, `note search`, `note view`, and `note edit`.
+- **Cross-Platform CLI Subcommands**: Pipelining and quick terminal capture via `note add`, `note today`, `note list`, `note search`, `note view`, and `note edit`.
 
 ---
 
-## Installation
+## Installation & Windows Downloads
+
+### 🪟 Windows (Standalone Executable - No Python Required)
+
+1. Go to the [**Latest GitHub Releases**](https://github.com/Musual-Moncra/noted/releases).
+2. Download `noted-windows-x64.zip`.
+3. Extract the archive and double-click `noted.exe` (or open it inside **Windows Terminal** / PowerShell):
+   ```powershell
+   .\noted.exe
+   ```
+4. *(Recommended)* Add the folder containing `noted.exe` to your System `PATH` so you can type `noted` from any terminal.
+
+> **Tip for Windows Terminal users**: For the best visual experience with emojis and icons, use [Windows Terminal](https://aka.ms/terminal) with a font that supports symbols (such as Cascadia Code, JetBrains Mono, or any Nerd Font).
+
+---
+
+### 📦 Install via Python Package Manager (`uv`, `pipx`, `pip`)
+
+Works on **macOS**, **Linux**, and **Windows**:
 
 Using `uv` (recommended):
 ```bash
-git clone https://github.com/Musual-Moncra/noted.git
-cd noted
-uv tool install --editable .
+uv tool install git+https://github.com/Musual-Moncra/noted.git
 ```
 
-Or with `pip`:
+Or using `pipx`:
 ```bash
-pip install -e .
+pipx install git+https://github.com/Musual-Moncra/noted.git
+```
+
+Or using standard `pip`:
+```bash
+pip install git+https://github.com/Musual-Moncra/noted.git
+```
+
+---
+
+### 🛠️ Build from Source
+
+```bash
+git clone https://github.com/Musual-Moncra/noted.git
+cd noted
+uv sync --all-extras --dev
+
+# Run locally
+uv run note
+
+# Build standalone binary with PyInstaller
+uv run pyinstaller noted.spec --clean
+# Executable is generated in dist/ (dist/noted or dist/noted.exe)
 ```
 
 ---
@@ -147,6 +190,15 @@ uv run pytest -v
 
 ---
 
+## Contributing
+
+Contributions are warmly welcome! Whether reporting bugs, proposing new features, or submitting pull requests, please read our:
+- [Contributing Guidelines](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+
+---
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
+

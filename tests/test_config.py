@@ -6,7 +6,7 @@ from noted.config import Config, load_config
 def test_default_config(monkeypatch):
     monkeypatch.delenv("NOTES_DIR", raising=False)
     config = load_config()
-    expected_notes_dir = Path.home() / ".local" / "share" / "notes"
+    expected_notes_dir = Path.home() / ".notes" if os.name == "nt" else Path.home() / ".local" / "share" / "notes"
     assert config.notes_dir == expected_notes_dir
     assert config.editor is None
     assert "Highlights" in config.journal_template

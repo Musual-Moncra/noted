@@ -21,6 +21,14 @@ app = typer.Typer(
     add_completion=False,
 )
 
+if sys.platform == "win32":
+    if hasattr(sys.stdout, "reconfigure"):
+        try:
+            sys.stdout.reconfigure(encoding="utf-8")
+            sys.stderr.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
 console = Console()
 
 def get_services(custom_config_path: Path | None = None) -> tuple[Config, StorageManager, DatabaseManager, NoteIndexer]:
@@ -155,3 +163,6 @@ def sync_cmd() -> None:
     config, storage, db, indexer = get_services()
     count = indexer.sync_all()
     console.print(f"[bold green]✓[/bold green] Synced index. Re-indexed [bold cyan]{count}[/bold cyan] note(s).")
+
+if __name__ == "__main__":
+    app()
