@@ -453,4 +453,83 @@ async def test_tui_unlock_and_lock_note(tmp_path, monkeypatch):
         assert app.current_note.id in app.unlocked_notes
 
 
+@pytest.mark.asyncio
+async def test_tui_manage_lock_change_pass_and_remove_lock(tmp_path, monkeypatch):
+    from noted.tui.screens import (
+        ChangePasswordModal,
+        ConfirmRemoveLockModal,
+        ManageLockModal,
+        UnlockNoteModal,
+    )
+    notes_dir = tmp_path / "tui_manage_lock_test"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    note = storage.create_note(title="Vault Secret", body="Secret Gold Bar 777")
+    storage.lock_note(note, "OldPassA")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        # Unlock note first
+        await pilot.click("#btn-screen-unlock")
+        await pilot.pause()
+        assert isinstance(app.screen, UnlockNoteModal)
+        app.screen.query_one("#input-unlock-password").value = "OldPassA"
+        await pilot.press("enter")
+        await pilot.pause()
+        assert app.current_note.id in app.unlocked_notes
+
+        # Now press 'l' to open ManageLockModal
+        await pilot.press("l")
+        await pilot.pause()
+        assert isinstance(app.screen, ManageLockModal)
+
+        # 1. Test Change Password
+        await pilot.click("#btn-opt-change-pass")
+        await pilot.pause()
+        assert isinstance(app.screen, ChangePasswordModal)
+        app.screen.query_one("#input-new-pass1").value = "NewPassB"
+        app.screen.query_one("#input-new-pass2").value = "NewPassB"
+        await pilot.click("#btn-confirm-change")
+        await pilot.pause()
+
+        # 2. Re-lock note immediately
+        await pilot.press("l")
+        await pilot.pause()
+        assert isinstance(app.screen, ManageLockModal)
+        await pilot.click("#btn-opt-relock")
+        await pilot.pause()
+        assert app.current_note.id not in app.unlocked_notes
+        assert app.query_one("#locked-note-card").display is True
+
+        # 3. Unlock with NewPassB
+        await pilot.click("#btn-screen-unlock")
+        await pilot.pause()
+        app.screen.query_one("#input-unlock-password").value = "NewPassB"
+        await pilot.press("enter")
+        await pilot.pause()
+        assert app.current_note.id in app.unlocked_notes
+
+        # 4. Remove lock permanently
+        await pilot.press("l")
+        await pilot.pause()
+        assert isinstance(app.screen, ManageLockModal)
+        await pilot.click("#btn-opt-remove-lock")
+        await pilot.pause()
+        assert isinstance(app.screen, ConfirmRemoveLockModal)
+        await pilot.click("#btn-confirm-remove")
+        await pilot.pause()
+
+        # Should now be a plain unencrypted note
+        assert app.current_note.encrypted is False
+        assert app.query_one("#locked-note-card").display is False
+        assert app.query_one("#markdown-viewer").display is True
+
+
+
 

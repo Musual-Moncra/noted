@@ -35,10 +35,13 @@ from noted.indexer import NoteIndexer
 from noted.models import Note, NoteSummary
 from noted.storage import StorageManager
 from noted.tui.screens import (
+    ChangePasswordModal,
     ColorFormatModal,
     ConfirmDeleteModal,
+    ConfirmRemoveLockModal,
     HelpModal,
     LockNoteModal,
+    ManageLockModal,
     NewNoteModal,
     RenameNoteModal,
     UnlockNoteModal,
@@ -583,7 +586,7 @@ class NotedApp(App[None]):
         elif btn_id in ("btn-screen-unlock", "btn-mode-lock"):
             if self.current_note and self.current_note.encrypted:
                 if self.current_note.id in self.unlocked_notes:
-                    self.notify("Ghi chú đã được mở khóa trong phiên hiện tại.", severity="information")
+                    self.action_manage_lock()
                 else:
                     self.action_unlock_note()
             else:
@@ -596,7 +599,7 @@ class NotedApp(App[None]):
             return
 
         if self.current_note.id in self.unlocked_notes:
-            self.notify("Ghi chú này đã được mở khóa trong phiên hiện tại.", severity="information")
+            self.action_manage_lock()
             return
 
         def handle_unlock(password: Optional[str]) -> None:
@@ -627,13 +630,16 @@ class NotedApp(App[None]):
         self.push_screen(UnlockNoteModal(self.current_note.title), handle_unlock)
 
     def action_lock_note(self) -> None:
-        """Opens modal to lock or re-lock the current note."""
+        """Opens modal to lock or manage lock for the current note."""
         if not self.current_note:
             self.notify("Không có ghi chú nào được chọn.", severity="warning")
             return
 
-        if self.current_note.encrypted and self.current_note.id not in self.unlocked_notes:
-            self.action_unlock_note()
+        if self.current_note.encrypted:
+            if self.current_note.id in self.unlocked_notes:
+                self.action_manage_lock()
+            else:
+                self.action_unlock_note()
             return
 
         def handle_lock(password: Optional[str]) -> None:
@@ -657,6 +663,102 @@ class NotedApp(App[None]):
             self.notify("Đã khóa ghi chú bằng mật khẩu thành công! ✓", title="Locked", severity="information")
 
         self.push_screen(LockNoteModal(self.current_note.title), handle_lock)
+
+    def action_manage_lock(self) -> None:
+        """Opens modal to manage an unlocked encrypted note (Change Password, Remove Lock, Relock)."""
+        if not self.current_note or not self.current_note.encrypted:
+            return
+
+        if self.current_note.id not in self.unlocked_notes:
+            self.action_unlock_note()
+            return
+
+        def handle_manage_choice(choice: Optional[str]) -> None:
+            if not choice or not self.current_note:
+                return
+
+            if choice == "change_password":
+                self._prompt_change_password()
+            elif choice == "remove_lock":
+                self._prompt_remove_lock()
+            elif choice == "relock":
+                self._relock_current_note()
+
+        self.push_screen(ManageLockModal(self.current_note.title), handle_manage_choice)
+
+    def _prompt_change_password(self) -> None:
+        if not self.current_note:
+            return
+
+        def handle_new_password(new_pwd: Optional[str]) -> None:
+            if not new_pwd or not self.current_note:
+                return
+
+            plain_body = self.unlocked_notes.get(self.current_note.id, self.current_note.body)
+            self.current_note.body = plain_body
+            self.storage.lock_note(self.current_note, new_pwd)
+            self.indexer.index_note(self.current_note)
+
+            if not hasattr(self, "session_passwords"):
+                self.session_passwords = {}
+            self.session_passwords[self.current_note.id] = new_pwd
+            self.unlocked_notes[self.current_note.id] = plain_body
+
+            self.notify("Đã đổi mật khẩu thành công! ✓", title="Password Changed", severity="information")
+
+        self.push_screen(ChangePasswordModal(self.current_note.title), handle_new_password)
+
+    def _prompt_remove_lock(self) -> None:
+        if not self.current_note:
+            return
+
+        def handle_confirm_remove(confirmed: bool) -> None:
+            if not confirmed or not self.current_note:
+                return
+
+            plain_body = self.unlocked_notes.get(self.current_note.id, self.current_note.body)
+            self.current_note.body = plain_body
+            self.current_note.encrypted = False
+            self.current_note.salt = None
+            self.current_note.nonce = None
+            self.storage.save_note(self.current_note)
+            self.indexer.index_note(self.current_note)
+
+            self.unlocked_notes.pop(self.current_note.id, None)
+            if hasattr(self, "session_passwords"):
+                self.session_passwords.pop(self.current_note.id, None)
+
+            self.query_one("#metadata-header", MetadataHeader).update_metadata(
+                self.current_note, self.note_mode, is_unlocked=False
+            )
+            self.refresh_notes_list(select_id=self.current_note.id)
+            self.query_one("#notes-list", ListView).focus()
+            self.notify("Đã bỏ khóa ghi chú thành công! ✓", title="Unlocked", severity="information")
+
+        self.push_screen(ConfirmRemoveLockModal(self.current_note.title), handle_confirm_remove)
+
+    def _relock_current_note(self) -> None:
+        if not self.current_note:
+            return
+
+        if self.note_mode in ["edit", "split"]:
+            self.save_current_note(silent=True)
+
+        self.unlocked_notes.pop(self.current_note.id, None)
+        if hasattr(self, "session_passwords"):
+            self.session_passwords.pop(self.current_note.id, None)
+
+        self.set_mode("view")
+        self.query_one("#locked-note-card").display = True
+        self.query_one("#markdown-viewer").display = False
+        self.query_one("#text-editor", TextArea).text = ""
+
+        self.query_one("#metadata-header", MetadataHeader).update_metadata(
+            self.current_note, self.note_mode, is_unlocked=False
+        )
+        self.refresh_notes_list(select_id=self.current_note.id)
+        self.query_one("#notes-list", ListView).focus()
+        self.notify("Đã khóa lại ghi chú trong phiên hiện tại.", title="Locked", severity="information")
 
     def action_copy_content(self) -> None:
         """Copies note content or current selection to the system clipboard."""

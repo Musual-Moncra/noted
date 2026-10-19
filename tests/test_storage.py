@@ -120,4 +120,21 @@ def test_lock_and_unlock_note(storage):
     assert reloaded.body.strip() == "Top secret plans"
 
 
+def test_change_password(storage):
+    note = storage.create_note(title="Password Rotation", body="Original confidential body")
+    storage.lock_note(note, "OldPass123")
+
+    # Change password
+    storage.change_password(note, "OldPass123", "NewPass456")
+
+    # Trying old password should fail
+    from noted.crypto import InvalidPasswordOrCorruptedError
+    with pytest.raises(InvalidPasswordOrCorruptedError):
+        storage.unlock_note(note, "OldPass123")
+
+    # New password should decrypt successfully
+    assert storage.unlock_note(note, "NewPass456") == "Original confidential body"
+
+
+
 

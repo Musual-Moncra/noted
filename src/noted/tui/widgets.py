@@ -240,7 +240,7 @@ class MetadataHeader(Vertical):
             if not note.encrypted:
                 lock_btn.label = "🔒 Khóa"
             elif is_unlocked:
-                lock_btn.label = "🔓 Đã mở"
+                lock_btn.label = "🔐 Quản lý"
             else:
                 lock_btn.label = "🔓 Mở khóa"
         except Exception:

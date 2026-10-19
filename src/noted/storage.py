@@ -138,6 +138,12 @@ class StorageManager:
         note.nonce = None
         return self.save_note(note)
 
+    def change_password(self, note: Note, old_password: str, new_password: str) -> Path:
+        """Verifies old password, decrypts, and re-encrypts note body with new password and fresh salt/nonce."""
+        decrypted = self.unlock_note(note, old_password)
+        note.body = decrypted
+        return self.lock_note(note, new_password)
+
 
     def create_note(
         self,

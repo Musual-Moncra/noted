@@ -149,3 +149,24 @@ def test_cli_edit_encrypted_protection():
     assert res.exit_code != 0
     assert "This note is encrypted" in res.stdout
 
+
+def test_cli_change_password():
+    runner.invoke(app, ["add", "Rotating key content", "--title", "Rotate Note"])
+    runner.invoke(app, ["lock", "Rotate Note", "-p", "OldKey123"])
+
+    # Attempt change with wrong old password
+    fail_res = runner.invoke(app, ["change-password", "Rotate Note", "-p", "WrongKey", "--new-password", "NewKey456"])
+    assert fail_res.exit_code != 0
+    assert "Incorrect password" in fail_res.stdout
+
+    # Change with correct old password
+    change_res = runner.invoke(app, ["change-password", "Rotate Note", "-p", "OldKey123", "--new-password", "NewKey456"])
+    assert change_res.exit_code == 0
+    assert "Changed password" in change_res.stdout
+
+    # View with new password
+    view_res = runner.invoke(app, ["view", "Rotate Note", "-p", "NewKey456"])
+    assert view_res.exit_code == 0
+    assert "Rotating key content" in view_res.stdout
+
+

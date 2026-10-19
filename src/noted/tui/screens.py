@@ -189,6 +189,144 @@ class LockNoteModal(ModalScreen[Optional[str]]):
         self.dismiss(p1)
 
 
+class ManageLockModal(ModalScreen[Optional[str]]):
+    """Modal to manage an unlocked encrypted note: Change Password, Remove Lock, or Relock Now."""
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel", priority=True),
+        Binding("1", "choose_change_password", "Đổi mật khẩu"),
+        Binding("2", "choose_remove_lock", "Bỏ khóa"),
+        Binding("3", "choose_relock", "Khóa lại ngay"),
+    ]
+
+    def __init__(self, note_title: str):
+        super().__init__()
+        self.note_title = note_title
+
+    def compose(self) -> ComposeResult:
+        with Vertical(classes="modal-dialog"):
+            yield Label("🔐 Quản Lý Khóa Ghi Chú", classes="dialog-title")
+            yield Static(f"Ghi chú: [bold cyan]{self.note_title}[/bold cyan]")
+            yield Static("[dim]Chọn thao tác bảo mật bạn muốn thực hiện:[/dim]\n")
+            with Vertical(id="manage-lock-options"):
+                yield Button("🔑 1. Đổi mật khẩu mới", id="btn-opt-change-pass", variant="primary")
+                yield Button("🔓 2. Bỏ khóa (Gỡ mật khẩu vĩnh viễn)", id="btn-opt-remove-lock", variant="warning")
+                yield Button("🔒 3. Khóa lại ngay lập tức", id="btn-opt-relock", variant="default")
+            with Horizontal(classes="modal-buttons"):
+                yield Button("Cancel", id="btn-cancel", variant="default")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-opt-change-pass":
+            self.dismiss("change_password")
+        elif event.button.id == "btn-opt-remove-lock":
+            self.dismiss("remove_lock")
+        elif event.button.id == "btn-opt-relock":
+            self.dismiss("relock")
+        elif event.button.id == "btn-cancel":
+            self.dismiss(None)
+
+    def action_choose_change_password(self) -> None:
+        self.dismiss("change_password")
+
+    def action_choose_remove_lock(self) -> None:
+        self.dismiss("remove_lock")
+
+    def action_choose_relock(self) -> None:
+        self.dismiss("relock")
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+
+class ChangePasswordModal(ModalScreen[Optional[str]]):
+    """Modal dialog to enter and confirm new password."""
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel", priority=True),
+    ]
+
+    def __init__(self, note_title: str):
+        super().__init__()
+        self.note_title = note_title
+
+    def compose(self) -> ComposeResult:
+        with Vertical(classes="modal-dialog"):
+            yield Label("🔑 Đổi Mật Khẩu Ghi Chú", classes="dialog-title")
+            yield Static(f"Ghi chú: [bold cyan]{self.note_title}[/bold cyan]")
+            yield Label("Mật khẩu mới:")
+            yield VietnameseInput(password=True, placeholder="Nhập mật khẩu mới...", id="input-new-pass1")
+            yield Label("Xác nhận mật khẩu mới:")
+            yield VietnameseInput(password=True, placeholder="Nhập lại mật khẩu mới...", id="input-new-pass2")
+            yield Static("", id="change-error-msg", classes="error-msg")
+            with Horizontal(classes="modal-buttons"):
+                yield Button("Cancel", id="btn-cancel", variant="default")
+                yield Button("Lưu mật khẩu mới", id="btn-confirm-change", variant="primary")
+
+    def on_mount(self) -> None:
+        self.query_one("#input-new-pass1", VietnameseInput).focus()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-confirm-change":
+            self._submit()
+        elif event.button.id == "btn-cancel":
+            self.dismiss(None)
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id == "input-new-pass1":
+            self.query_one("#input-new-pass2", VietnameseInput).focus()
+        else:
+            self._submit()
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def _submit(self) -> None:
+        p1 = self.query_one("#input-new-pass1", VietnameseInput).value
+        p2 = self.query_one("#input-new-pass2", VietnameseInput).value
+        if not p1:
+            self.query_one("#change-error-msg", Static).update("[bold red]Mật khẩu mới không được để trống![/bold red]")
+            return
+        if p1 != p2:
+            self.query_one("#change-error-msg", Static).update("[bold red]Mật khẩu xác nhận không khớp![/bold red]")
+            return
+        self.dismiss(p1)
+
+
+class ConfirmRemoveLockModal(ModalScreen[bool]):
+    """Confirmation modal before permanently removing password lock."""
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel", priority=True),
+    ]
+
+    def __init__(self, note_title: str):
+        super().__init__()
+        self.note_title = note_title
+
+    def compose(self) -> ComposeResult:
+        with Vertical(classes="modal-dialog"):
+            yield Label("Gỡ Bỏ Mật Khẩu Bảo Vệ?", classes="dialog-title")
+            yield Static(
+                f"Bạn có chắc muốn gỡ bỏ mật khẩu bảo vệ cho ghi chú [bold cyan]'{self.note_title}'[/bold cyan]?\n\n"
+                "[yellow]Sau khi gỡ bỏ, ghi chú sẽ trở về dạng văn bản thường và ai cũng có thể đọc được.[/yellow]"
+            )
+            with Horizontal(classes="modal-buttons"):
+                yield Button("Hủy", id="btn-cancel", variant="default")
+                yield Button("Gỡ bỏ khóa", id="btn-confirm-remove", variant="warning")
+
+    def on_mount(self) -> None:
+        self.query_one("#btn-cancel", Button).focus()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-confirm-remove":
+            self.dismiss(True)
+        else:
+            self.dismiss(False)
+
+    def action_cancel(self) -> None:
+        self.dismiss(False)
+
+
 class ConfirmDeleteModal(ModalScreen[bool]):
 
     """Confirmation modal before deleting a note."""

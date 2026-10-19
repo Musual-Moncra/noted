@@ -177,6 +177,10 @@ def lock_cmd(
         console.print(f"[bold red]Error:[/bold red] Note matching '[yellow]{identifier}[/yellow]' not found.")
         raise typer.Exit(code=1)
 
+    if note.encrypted:
+        console.print(f"[bold yellow]Note '{note.title}' is already locked.[/bold yellow] Use 'note change-password' to change password or 'note unlock' to remove lock.")
+        raise typer.Exit(code=1)
+
     if not password:
         password = typer.prompt(
             f"Enter password to lock '{note.title}'",
@@ -188,7 +192,40 @@ def lock_cmd(
     indexer.index_note(note)
     console.print(f"[bold green]✓[/bold green] Locked note [bold cyan]{note.id}[/bold cyan] ([bold white]{note.title}[/bold white]) with AES-256 encryption.")
 
+@app.command(name="change-password", help="Change the password of an encrypted note.")
+@app.command(name="passwd", hidden=True)
+@app.command(name="chpass", hidden=True)
+def change_password_cmd(
+    identifier: str = typer.Argument(..., help="Note ID, journal date, or title keyword"),
+    old_password: Optional[str] = typer.Option(None, "-p", "--password", "--old-password", help="Current password"),
+    new_password: Optional[str] = typer.Option(None, "--new-password", help="New password"),
+) -> None:
+    config, storage, db, indexer = get_services()
+    note = indexer.get_note_by_id_or_date(identifier)
+    if not note:
+        console.print(f"[bold red]Error:[/bold red] Note matching '[yellow]{identifier}[/yellow]' not found.")
+        raise typer.Exit(code=1)
+
+    if not note.encrypted:
+        console.print(f"[yellow]Note '{note.title}' is not locked. Use 'note lock' to lock it.[/yellow]")
+        raise typer.Exit(code=1)
+
+    if not old_password:
+        old_password = typer.prompt(f"Enter current password for '{note.title}'", hide_input=True)
+
+    if not new_password:
+        new_password = typer.prompt("Enter new password", hide_input=True, confirmation_prompt=True)
+
+    try:
+        storage.change_password(note, old_password, new_password)
+        indexer.index_note(note)
+        console.print(f"[bold green]✓[/bold green] Changed password for note [bold cyan]{note.id}[/bold cyan] ([bold white]{note.title}[/bold white]).")
+    except Exception:
+        console.print("[bold red]Error:[/bold red] Incorrect password. Could not change password.")
+        raise typer.Exit(code=1)
+
 @app.command(name="unlock", help="Permanently decrypt and remove password lock from a note.")
+@app.command(name="remove-lock", hidden=True)
 def unlock_cmd(
     identifier: str = typer.Argument(..., help="Note ID, journal date, or title keyword"),
     password: Optional[str] = typer.Option(None, "-p", "--password", help="Password to decrypt note"),

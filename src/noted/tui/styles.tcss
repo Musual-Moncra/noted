@@ -244,3 +244,13 @@ ModalScreen {
     text-style: bold;
 }
 
+#manage-lock-options {
+    height: auto;
+    margin-bottom: 1;
+}
+
+#manage-lock-options Button {
+    width: 100%;
+    margin-bottom: 1;
+}
+
