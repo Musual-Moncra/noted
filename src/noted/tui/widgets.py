@@ -1,7 +1,7 @@
 import unicodedata
 from textual import events
 from textual.app import ComposeResult
-from textual.containers import Horizontal
+from textual.containers import Horizontal, Vertical
 from textual.document._document import EditResult, Location
 from textual.widgets import Button, Input, ListItem, Static, TextArea
 from noted.models import Note, NoteSummary
@@ -164,40 +164,55 @@ class NoteListItem(ListItem):
         self.summary = summary
 
     def compose(self) -> ComposeResult:
-        icon = "📓" if self.summary.note_type == "journal" else "📝"
+        if self.summary.encrypted:
+            icon = "🔒"
+        elif self.summary.note_type == "journal":
+            icon = "📓"
+        else:
+            icon = "📝"
         short_date = self.summary.date.replace("T", " ")[:10]
         tags_str = " ".join(f"#{t}" for t in self.summary.tags[:3])
         if tags_str:
             tags_str = f" [dim blue]{tags_str}[/dim blue]"
 
+        title = self.summary.title
+        if len(title) > 22:
+            title = title[:21] + "…"
+
         text = (
-            f"{icon} [bold]{self.summary.title}[/bold]\n"
+            f"{icon} [bold]{title}[/bold]\n"
             f"   [dim]{short_date}[/dim]{tags_str}"
         )
         yield Static(text, classes="note-item-text")
 
 
-class MetadataHeader(Horizontal):
-    """Header bar showing current note metadata and interactive mode buttons."""
+class MetadataHeader(Vertical):
+    """Header bar showing current note metadata in top row and interactive mode buttons in bottom row."""
 
     def compose(self) -> ComposeResult:
         yield Static("[dim]No note selected[/dim]", id="metadata-info")
         with Horizontal(id="mode-button-group"):
-            yield Button("👁 Xem (Ctrl+P)", id="btn-mode-view", classes="mode-btn -active")
+            yield Button("👁 Xem", id="btn-mode-view", classes="mode-btn -active")
             yield Button("📝 Soạn", id="btn-mode-edit", classes="mode-btn")
             yield Button("◫ Song song", id="btn-mode-split", classes="mode-btn")
-            yield Button("📋 Copy", id="btn-mode-copy", classes="mode-btn")
             yield Button("✏ Đổi tên", id="btn-mode-rename", classes="mode-btn")
-            yield Button("🚀 Mở Editor", id="btn-mode-ext", classes="mode-btn")
+            yield Button("📋 Copy", id="btn-mode-copy", classes="mode-btn")
+            yield Button("🔒 Khóa", id="btn-mode-lock", classes="mode-btn")
+            yield Button("🚀 Editor", id="btn-mode-ext", classes="mode-btn")
             yield Button("💾 Lưu", id="btn-mode-save", classes="mode-btn")
 
-    def update_metadata(self, note: Note | None, current_mode: str) -> None:
+    def update_metadata(self, note: Note | None, current_mode: str, is_unlocked: bool = False) -> None:
         info_widget = self.query_one("#metadata-info", Static)
         if not note:
             info_widget.update("[dim]No note selected[/dim]")
             return
 
-        icon = "📓" if note.note_type == "journal" else "📝"
+        if note.encrypted:
+            icon = "🔓" if is_unlocked else "🔒"
+        elif note.note_type == "journal":
+            icon = "📓"
+        else:
+            icon = "📝"
         tags_badge = " ".join(f"[blue]#{t}[/blue]" for t in note.tags) if note.tags else "[dim]none[/dim]"
         formatted_date = note.date.replace("T", " ")[:16]
 
@@ -210,8 +225,23 @@ class MetadataHeader(Horizontal):
 
         # Update active classes on mode buttons
         for mode in ["view", "edit", "split"]:
-            btn = self.query_one(f"#btn-mode-view" if mode == "view" else f"#btn-mode-{mode}", Button)
-            if mode == current_mode:
-                btn.add_class("-active")
+            try:
+                btn = self.query_one(f"#btn-mode-view" if mode == "view" else f"#btn-mode-{mode}", Button)
+                if mode == current_mode:
+                    btn.add_class("-active")
+                else:
+                    btn.remove_class("-active")
+            except Exception:
+                pass
+
+        # Update lock button text
+        try:
+            lock_btn = self.query_one("#btn-mode-lock", Button)
+            if not note.encrypted:
+                lock_btn.label = "🔒 Khóa"
+            elif is_unlocked:
+                lock_btn.label = "🔓 Đã mở"
             else:
-                btn.remove_class("-active")
+                lock_btn.label = "🔓 Mở khóa"
+        except Exception:
+            pass

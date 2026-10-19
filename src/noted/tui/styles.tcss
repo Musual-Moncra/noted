@@ -8,7 +8,9 @@ Screen {
 }
 
 #sidebar {
-    width: 36;
+    width: 32;
+    min-width: 26;
+    max-width: 36;
     height: 1fr;
     border-right: vkey $primary;
     background: $surface;
@@ -47,30 +49,33 @@ Screen {
 }
 
 #metadata-header {
-    height: 3;
+    height: 4;
     border-bottom: solid $primary-darken-2;
     padding: 0 1;
     background: $surface-darken-1;
-    layout: horizontal;
-    align-vertical: middle;
+    layout: vertical;
 }
 
 #metadata-info {
-    width: 1fr;
+    width: 100%;
+    height: 1;
     content-align: left middle;
 }
 
 #mode-button-group {
-    width: auto;
+    width: 100%;
     height: 1;
-    align: right middle;
+    margin-top: 1;
+    layout: horizontal;
+    overflow-x: auto;
+    scrollbar-size-horizontal: 0;
 }
 
 .mode-btn {
-    min-width: 10;
+    min-width: 7;
     height: 1;
     padding: 0 1;
-    margin-left: 1;
+    margin-right: 1;
     border: none;
     background: $surface;
     color: $text-muted;
@@ -113,10 +118,12 @@ Screen {
     padding: 0 1;
     align-vertical: middle;
     overflow-x: auto;
+    scrollbar-size-horizontal: 0;
 }
 
+
 .fmt-btn {
-    min-width: 8;
+    min-width: 4;
     height: 1;
     padding: 0 1;
     margin-right: 1;
@@ -133,6 +140,7 @@ Screen {
 #text-editor {
     height: 1fr;
     border: none;
+
 }
 
 /* Modal styles */

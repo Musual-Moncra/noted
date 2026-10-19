@@ -350,3 +350,30 @@ async def test_tui_rename_note(tmp_path, monkeypatch):
         assert app.current_note.filepath.exists()
         assert "new-updated-title" in app.current_note.filepath.name
 
+@pytest.mark.asyncio
+async def test_header_and_toolbar_dimensions(tmp_path, monkeypatch):
+    notes_dir = tmp_path / "tui_dimensions"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    storage.create_note(title="A Very Long Note Title That Should Not Be Crushed", body="Some markdown content")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test(size=(100, 30)) as pilot:
+        await pilot.pause()
+        meta_info = app.query_one("#metadata-info")
+        # Metadata info must NOT be crushed down to width 1!
+        assert meta_info.size.width > 50
+
+        # Switch to edit mode and verify toolbar total width is <= 45 columns
+        app.set_mode("edit")
+        await pilot.pause()
+        toolbar = app.query_one("#formatting-toolbar")
+        total_btn_w = sum(btn.size.width for btn in toolbar.children)
+        assert total_btn_w <= 45
+
+

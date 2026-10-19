@@ -45,23 +45,24 @@ class NotedApp(App[None]):
 
     BINDINGS = [
         Binding("ctrl+q", "quit", "Quit", show=True, priority=True),
-        Binding("n", "new_note", "New Note", show=True),
+        Binding("n", "new_note", "New", show=True),
         Binding("j", "today_journal", "Today", show=True),
         Binding("e", "toggle_edit", "Edit/View", show=True),
-        Binding("ctrl+p", "toggle_preview", "Preview", show=True, priority=True),
+        Binding("ctrl+p", "toggle_preview", "Preview", show=False, priority=True),
         Binding("f2", "toggle_preview", "View/Edit", show=False, priority=True),
-        Binding("ctrl+w", "toggle_split", "Split View", show=True, priority=True),
-        Binding("ctrl+s", "save_note", "Save", show=True, priority=True),
+        Binding("ctrl+w", "toggle_split", "Split", show=True, priority=True),
+        Binding("ctrl+s", "save_note", "Save", show=False, priority=True),
         Binding("ctrl+b", "format_bold", "Bold", show=False, priority=True),
         Binding("ctrl+i", "format_italic", "Italic", show=False, priority=True),
         Binding("ctrl+k", "format_code", "Code", show=False, priority=True),
         Binding("ctrl+h", "format_heading", "Heading", show=False, priority=True),
         Binding("ctrl+t", "format_todo", "Todo", show=False, priority=True),
         Binding("ctrl+m", "format_color", "Color", show=False, priority=True),
-        Binding("ctrl+e", "open_external", "$EDITOR", show=True),
+        Binding("ctrl+e", "open_external", "$EDITOR", show=False),
         Binding("c", "copy_content", "Copy", show=True),
         Binding("ctrl+y", "copy_content", "Copy", show=False, priority=True),
         Binding("r", "rename_note", "Rename", show=True),
+        Binding("u", "unlock_note", "Unlock", show=True),
         Binding("d", "delete_note", "Delete", show=True),
         Binding("slash", "focus_search", "Search", show=True),
         Binding("escape", "exit_edit_mode", "View/List", show=False, priority=True),
@@ -78,6 +79,7 @@ class NotedApp(App[None]):
         self.current_note: Optional[Note] = None
         self.note_mode: str = "view"  # "view", "edit", or "split"
         self._preview_timer = None
+        self.unlocked_notes: dict[str, str] = {}  # session cache: note_id -> decrypted body
 
     @property
     def edit_mode(self) -> bool:
@@ -91,25 +93,25 @@ class NotedApp(App[None]):
         yield Header()
         with Horizontal(id="main-container"):
             with Vertical(id="sidebar"):
-                yield VietnameseInput(placeholder="Search notes... [/]", id="search-input")
+                yield VietnameseInput(placeholder="🔍 Tìm kiếm... [/]", id="search-input")
                 yield ListView(id="notes-list")
             with Vertical(id="content-area"):
                 yield MetadataHeader(id="metadata-header")
                 with Horizontal(id="main-workspace"):
                     with Container(id="edit-container"):
                         with Horizontal(id="formatting-toolbar"):
-                            yield Button("𝐁 Bold", id="btn-fmt-bold", classes="fmt-btn")
-                            yield Button("𝐼 Italic", id="btn-fmt-italic", classes="fmt-btn")
-                            yield Button("⟨/⟩ Code", id="btn-fmt-code", classes="fmt-btn")
-                            yield Button("H# Heading", id="btn-fmt-heading", classes="fmt-btn")
-                            yield Button("☑ Todo", id="btn-fmt-todo", classes="fmt-btn")
-                            yield Button("❝ Quote", id="btn-fmt-quote", classes="fmt-btn")
-                            yield Button("💡 Tip/Callout", id="btn-fmt-callout", classes="fmt-btn")
-                            yield Button("🎨 Màu sắc", id="btn-fmt-color", classes="fmt-btn")
-                            yield Button("📋 Copy", id="btn-fmt-copy", classes="fmt-btn")
+                            yield Button("𝐁", id="btn-fmt-bold", classes="fmt-btn")
+                            yield Button("𝐼", id="btn-fmt-italic", classes="fmt-btn")
+                            yield Button("</>", id="btn-fmt-code", classes="fmt-btn")
+                            yield Button("H#", id="btn-fmt-heading", classes="fmt-btn")
+                            yield Button("☑", id="btn-fmt-todo", classes="fmt-btn")
+                            yield Button("❝", id="btn-fmt-quote", classes="fmt-btn")
+                            yield Button("💡", id="btn-fmt-callout", classes="fmt-btn")
+                            yield Button("🎨", id="btn-fmt-color", classes="fmt-btn")
                         yield VietnameseTextArea(id="text-editor", language="markdown")
                     with Container(id="view-container"):
                         yield Markdown(id="markdown-viewer")
+
         yield Footer()
 
     def on_mount(self) -> None:
