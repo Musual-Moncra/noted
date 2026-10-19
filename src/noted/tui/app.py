@@ -4,6 +4,7 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.widgets import (
+    Button,
     Footer,
     Header,
     Input,
@@ -34,6 +35,11 @@ class NotedApp(App[None]):
         Binding("j", "today_journal", "Today", show=True),
         Binding("e", "toggle_edit", "Edit/View", show=True),
         Binding("ctrl+s", "save_note", "Save", show=True, priority=True),
+        Binding("ctrl+b", "format_bold", "Bold", show=False, priority=True),
+        Binding("ctrl+i", "format_italic", "Italic", show=False, priority=True),
+        Binding("ctrl+k", "format_code", "Code", show=False, priority=True),
+        Binding("ctrl+h", "format_heading", "Heading", show=False, priority=True),
+        Binding("ctrl+t", "format_todo", "Todo", show=False, priority=True),
         Binding("ctrl+e", "open_external", "$EDITOR", show=True),
         Binding("d", "delete_note", "Delete", show=True),
         Binding("slash", "focus_search", "Search", show=True),
@@ -62,6 +68,14 @@ class NotedApp(App[None]):
                 with Container(id="view-container"):
                     yield Markdown(id="markdown-viewer")
                 with Container(id="edit-container"):
+                    with Horizontal(id="formatting-toolbar"):
+                        yield Button("𝐁 Bold", id="btn-fmt-bold", classes="fmt-btn")
+                        yield Button("𝐼 Italic", id="btn-fmt-italic", classes="fmt-btn")
+                        yield Button("⟨/⟩ Code", id="btn-fmt-code", classes="fmt-btn")
+                        yield Button("H# Heading", id="btn-fmt-heading", classes="fmt-btn")
+                        yield Button("☑ Todo", id="btn-fmt-todo", classes="fmt-btn")
+                        yield Button("❝ Quote", id="btn-fmt-quote", classes="fmt-btn")
+                        yield Button("💡 Tip/Callout", id="btn-fmt-callout", classes="fmt-btn")
                     yield TextArea(id="text-editor", language="markdown")
         yield Footer()
 
@@ -256,3 +270,84 @@ class NotedApp(App[None]):
 
     def action_show_help(self) -> None:
         self.push_screen(HelpModal())
+
+    def _wrap_or_insert(self, prefix: str, suffix: str, placeholder: str) -> None:
+        if not self.edit_mode:
+            self.action_toggle_edit()
+
+        editor = self.query_one("#text-editor", TextArea)
+        if editor.selected_text:
+            editor.replace(
+                f"{prefix}{editor.selected_text}{suffix}",
+                editor.selection.start,
+                editor.selection.end,
+            )
+        else:
+            editor.insert(f"{prefix}{placeholder}{suffix}")
+        editor.focus()
+
+    def action_format_bold(self) -> None:
+        """Wraps selected text in **bold** or inserts **bold text**."""
+        self._wrap_or_insert("**", "**", "bold text")
+
+    def action_format_italic(self) -> None:
+        """Wraps selected text in *italic* or inserts *italic text*."""
+        self._wrap_or_insert("*", "*", "italic text")
+
+    def action_format_code(self) -> None:
+        """Wraps selected text in inline code or block."""
+        editor = self.query_one("#text-editor", TextArea)
+        if "\n" in editor.selected_text:
+            self._wrap_or_insert("```python\n", "\n```\n", "")
+        else:
+            self._wrap_or_insert("`", "`", "code")
+
+    def action_format_heading(self) -> None:
+        """Inserts a markdown heading."""
+        if not self.edit_mode:
+            self.action_toggle_edit()
+        editor = self.query_one("#text-editor", TextArea)
+        editor.insert("\n## Heading\n")
+        editor.focus()
+
+    def action_format_todo(self) -> None:
+        """Inserts an interactive todo checkbox item."""
+        if not self.edit_mode:
+            self.action_toggle_edit()
+        editor = self.query_one("#text-editor", TextArea)
+        editor.insert("\n- [ ] Todo item\n")
+        editor.focus()
+
+    def action_format_quote(self) -> None:
+        """Inserts a blockquote."""
+        if not self.edit_mode:
+            self.action_toggle_edit()
+        editor = self.query_one("#text-editor", TextArea)
+        editor.insert("\n> Blockquote text\n")
+        editor.focus()
+
+    def action_format_callout(self) -> None:
+        """Inserts a colored callout block (e.g. [!TIP] or [!NOTE])."""
+        if not self.edit_mode:
+            self.action_toggle_edit()
+        editor = self.query_one("#text-editor", TextArea)
+        editor.insert("\n> [!TIP]\n> Highlighted tip or note\n")
+        editor.focus()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        btn_id = event.button.id
+        if btn_id == "btn-fmt-bold":
+            self.action_format_bold()
+        elif btn_id == "btn-fmt-italic":
+            self.action_format_italic()
+        elif btn_id == "btn-fmt-code":
+            self.action_format_code()
+        elif btn_id == "btn-fmt-heading":
+            self.action_format_heading()
+        elif btn_id == "btn-fmt-todo":
+            self.action_format_todo()
+        elif btn_id == "btn-fmt-quote":
+            self.action_format_quote()
+        elif btn_id == "btn-fmt-callout":
+            self.action_format_callout()
+

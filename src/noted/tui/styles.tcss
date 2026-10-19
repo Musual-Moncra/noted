@@ -65,6 +65,29 @@ Screen {
     padding: 0;
 }
 
+#formatting-toolbar {
+    height: 3;
+    background: $surface;
+    border-bottom: solid $primary-darken-2;
+    padding: 0 1;
+    align-vertical: middle;
+}
+
+.fmt-btn {
+    min-width: 8;
+    height: 1;
+    padding: 0 1;
+    margin-right: 1;
+    border: none;
+    background: $surface-lighten-1;
+    color: $text;
+}
+
+.fmt-btn:hover {
+    background: $primary;
+    color: $text;
+}
+
 #text-editor {
     height: 1fr;
     border: none;

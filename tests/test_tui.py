@@ -94,3 +94,36 @@ async def test_tui_new_note_and_journal(tmp_path, monkeypatch):
         assert app.current_note is not None
         assert app.current_note.note_type == "journal"
         assert "Highlights" in app.current_note.body
+
+@pytest.mark.asyncio
+async def test_tui_formatting_shortcuts(tmp_path, monkeypatch):
+    notes_dir = tmp_path / "tui_notes_formatting"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    storage.create_note(title="Formatting Note", body="")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        # Enter edit mode
+        await pilot.press("e")
+        await pilot.pause()
+        assert app.edit_mode is True
+
+        # Test bold formatting
+        app.action_format_bold()
+        editor = app.query_one("#text-editor")
+        assert "**" in editor.text
+
+        # Test heading formatting
+        app.action_format_heading()
+        assert "# " in editor.text
+
+        # Test todo checkbox formatting
+        app.action_format_todo()
+        assert "- [ ]" in editor.text
