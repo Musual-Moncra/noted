@@ -127,3 +127,77 @@ class HelpModal(ModalScreen[None]):
 
     def action_dismiss_help(self) -> None:
         self.dismiss(None)
+
+
+class ColorFormatModal(ModalScreen[Optional[str]]):
+    """Modal dialog to pick color formats, callouts, or diff highlights."""
+
+    BINDINGS = [
+        Binding("escape", "cancel", "Cancel", priority=True),
+        Binding("1", "select_opt_1", "Green"),
+        Binding("2", "select_opt_2", "Blue"),
+        Binding("3", "select_opt_3", "Yellow"),
+        Binding("4", "select_opt_4", "Red"),
+        Binding("5", "select_opt_5", "Purple"),
+        Binding("6", "select_opt_6", "Diff Green"),
+        Binding("7", "select_opt_7", "Diff Red"),
+        Binding("8", "select_opt_8", "HTML Red"),
+        Binding("9", "select_opt_9", "HTML Blue"),
+    ]
+
+    TEMPLATES = {
+        "1": "> [!TIP]\n> {text}\n",
+        "2": "> [!NOTE]\n> {text}\n",
+        "3": "> [!WARNING]\n> {text}\n",
+        "4": "> [!CAUTION]\n> {text}\n",
+        "5": "> [!IMPORTANT]\n> {text}\n",
+        "6": "```diff\n+ {text}\n```\n",
+        "7": "```diff\n- {text}\n```\n",
+        "8": '<span style="color: #e74c3c">{text}</span>',
+        "9": '<span style="color: #3498db">{text}</span>',
+    }
+
+    OPTIONS = [
+        ("1", "btn-c-1", "🟢 Xanh lá (Tip / Success)", "1"),
+        ("2", "btn-c-2", "🔵 Xanh dương (Note / Info)", "2"),
+        ("3", "btn-c-3", "🟡 Vàng (Cảnh báo / Warning)", "3"),
+        ("4", "btn-c-4", "🔴 Đỏ (Nguy hiểm / Caution)", "4"),
+        ("5", "btn-c-5", "🟣 Tím (Quan trọng / Important)", "5"),
+        ("6", "btn-c-6", "🟩 Diff Xanh (Dòng thêm vào +)", "6"),
+        ("7", "btn-c-7", "🟥 Diff Đỏ (Dòng lỗi/xóa -)", "7"),
+        ("8", "btn-c-8", "🔴 Thẻ HTML Đỏ (#e74c3c)", "8"),
+        ("9", "btn-c-9", "🔵 Thẻ HTML Xanh (#3498db)", "9"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Vertical(classes="modal-dialog"):
+            yield Label("🎨 Chọn Định Dạng Màu Sắc Chữ", classes="dialog-title")
+            yield Static("[dim]Bấm số [bold cyan]1-9[/bold cyan] hoặc click chuột để áp dụng màu:[/dim]\n")
+            for key, btn_id, label, opt_key in self.OPTIONS:
+                with Horizontal(classes="color-choice-row"):
+                    yield Static(f"[bold cyan][{key}][/bold cyan]", classes="key-badge-small")
+                    yield Button(label, id=btn_id, classes="color-choice-btn")
+            with Horizontal(classes="modal-buttons"):
+                yield Button("Cancel", id="btn-cancel", variant="default")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        bid = event.button.id
+        for key, btn_id, label, opt_key in self.OPTIONS:
+            if bid == btn_id:
+                self.dismiss(self.TEMPLATES[opt_key])
+                return
+        self.dismiss(None)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def action_select_opt_1(self) -> None: self.dismiss(self.TEMPLATES["1"])
+    def action_select_opt_2(self) -> None: self.dismiss(self.TEMPLATES["2"])
+    def action_select_opt_3(self) -> None: self.dismiss(self.TEMPLATES["3"])
+    def action_select_opt_4(self) -> None: self.dismiss(self.TEMPLATES["4"])
+    def action_select_opt_5(self) -> None: self.dismiss(self.TEMPLATES["5"])
+    def action_select_opt_6(self) -> None: self.dismiss(self.TEMPLATES["6"])
+    def action_select_opt_7(self) -> None: self.dismiss(self.TEMPLATES["7"])
+    def action_select_opt_8(self) -> None: self.dismiss(self.TEMPLATES["8"])
+    def action_select_opt_9(self) -> None: self.dismiss(self.TEMPLATES["9"])
+

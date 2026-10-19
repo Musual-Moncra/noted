@@ -112,6 +112,7 @@ Screen {
     border-bottom: solid $primary-darken-2;
     padding: 0 1;
     align-vertical: middle;
+    overflow-x: auto;
 }
 
 .fmt-btn {
@@ -176,4 +177,31 @@ ModalScreen {
     width: 14;
     color: $accent;
     text-style: bold;
+}
+
+.color-choice-row {
+    layout: horizontal;
+    height: auto;
+    margin-bottom: 1;
+    align-vertical: middle;
+}
+
+.key-badge-small {
+    width: 6;
+    color: $accent;
+    text-style: bold;
+}
+
+.color-choice-btn {
+    height: 1;
+    min-width: 44;
+    border: none;
+    background: $surface-lighten-1;
+    color: $text;
+    padding: 0 1;
+}
+
+.color-choice-btn:hover {
+    background: $primary;
+    color: $text;
 }

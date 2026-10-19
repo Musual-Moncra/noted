@@ -7,7 +7,7 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)](https://github.com/Musual-Moncra/noted)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-42%20passed-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-44%20passed-brightgreen.svg)]()
 
 ---
 
@@ -135,6 +135,7 @@ note sync
 | `Ctrl+K` | Inline code or code block `` `code` `` |
 | `Ctrl+H` | Insert markdown `# Heading` |
 | `Ctrl+T` | Insert interactive `- [ ] Todo item` checkbox |
+| `Ctrl+M` | **Color Palette & Alerts** (Open color picker popup) |
 | `Ctrl+E` | Open note in external `$EDITOR` (Neovim/Vim/Nano) |
 | `d` | Delete current note (with confirmation prompt) |
 | `/` | Focus search bar |
@@ -164,6 +165,14 @@ When in **Edit** or **Split** mode, an interactive formatting toolbar is availab
 - **`☑ Todo`**: Inserts a checklist item `- [ ]`
 - **`❝ Quote`**: Inserts a blockquote `>`
 - **`💡 Tip/Callout`**: Inserts a GitHub-style alert callout (`> [!TIP]`)
+- **`🎨 Màu sắc` (`Ctrl+M`)**: Opens the **Color Picker Modal** to apply colored text highlights:
+  - 🟢 **Xanh lá (Tip / Success)**: `> [!TIP]`
+  - 🔵 **Xanh dương (Note / Info)**: `> [!NOTE]`
+  - 🟡 **Vàng (Cảnh báo / Warning)**: `> [!WARNING]`
+  - 🔴 **Đỏ (Nguy hiểm / Caution)**: `> [!CAUTION]`
+  - 🟣 **Tím (Quan trọng / Important)**: `> [!IMPORTANT]`
+  - 🟩 **Diff Xanh (`+`)** & 🟥 **Diff Đỏ (`-`)**: Tô màu dòng văn bản / code
+  - 🔴/🔵 **Thẻ HTML**: `<span style="color: ...">` cho Web/Obsidian/GitHub export
 
 ---
 

@@ -20,7 +20,7 @@ from noted.editor import open_in_editor
 from noted.indexer import NoteIndexer
 from noted.models import Note, NoteSummary
 from noted.storage import StorageManager
-from noted.tui.screens import ConfirmDeleteModal, HelpModal, NewNoteModal
+from noted.tui.screens import ColorFormatModal, ConfirmDeleteModal, HelpModal, NewNoteModal
 from noted.tui.widgets import MetadataHeader, NoteListItem
 
 class NotedApp(App[None]):
@@ -44,6 +44,7 @@ class NotedApp(App[None]):
         Binding("ctrl+k", "format_code", "Code", show=False, priority=True),
         Binding("ctrl+h", "format_heading", "Heading", show=False, priority=True),
         Binding("ctrl+t", "format_todo", "Todo", show=False, priority=True),
+        Binding("ctrl+m", "format_color", "Color", show=False, priority=True),
         Binding("ctrl+e", "open_external", "$EDITOR", show=True),
         Binding("d", "delete_note", "Delete", show=True),
         Binding("slash", "focus_search", "Search", show=True),
@@ -87,6 +88,7 @@ class NotedApp(App[None]):
                             yield Button("☑ Todo", id="btn-fmt-todo", classes="fmt-btn")
                             yield Button("❝ Quote", id="btn-fmt-quote", classes="fmt-btn")
                             yield Button("💡 Tip/Callout", id="btn-fmt-callout", classes="fmt-btn")
+                            yield Button("🎨 Màu sắc", id="btn-fmt-color", classes="fmt-btn")
                         yield TextArea(id="text-editor", language="markdown")
                     with Container(id="view-container"):
                         yield Markdown(id="markdown-viewer")
@@ -402,6 +404,26 @@ class NotedApp(App[None]):
         editor.insert("\n> [!TIP]\n> Highlighted tip or note\n")
         editor.focus()
 
+    def action_format_color(self) -> None:
+        """Opens ColorFormatModal to apply colored highlights, alert blocks, or diff colors."""
+        if not self.edit_mode:
+            self.action_toggle_edit()
+
+        editor = self.query_one("#text-editor", TextArea)
+        selected = editor.selected_text or "Nội dung cần làm nổi bật"
+
+        def apply_template(template: Optional[str]) -> None:
+            if not template:
+                return
+            formatted = template.format(text=selected)
+            if editor.selected_text:
+                editor.replace(formatted, editor.selection.start, editor.selection.end)
+            else:
+                editor.insert(formatted)
+            editor.focus()
+
+        self.push_screen(ColorFormatModal(), apply_template)
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         btn_id = event.button.id
         if btn_id == "btn-mode-view":
@@ -426,4 +448,6 @@ class NotedApp(App[None]):
             self.action_format_quote()
         elif btn_id == "btn-fmt-callout":
             self.action_format_callout()
+        elif btn_id == "btn-fmt-color":
+            self.action_format_color()
 

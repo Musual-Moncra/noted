@@ -274,3 +274,39 @@ async def test_tui_modal_centering(tmp_path, monkeypatch):
         assert app.screen.styles.align_vertical == "middle"
         await pilot.press("escape")
         await pilot.pause()
+
+@pytest.mark.asyncio
+async def test_tui_color_format_modal(tmp_path, monkeypatch):
+    from noted.tui.screens import ColorFormatModal
+    notes_dir = tmp_path / "tui_color_modal"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    storage.create_note(title="Color Test Note", body="Important line")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+
+        # Enter edit mode
+        await pilot.press("e")
+        await pilot.pause()
+
+        # Trigger color formatting modal
+        app.action_format_color()
+        await pilot.pause()
+
+        assert isinstance(app.screen, ColorFormatModal)
+        assert app.screen.styles.align_horizontal == "center"
+        assert app.screen.styles.align_vertical == "middle"
+
+        # Press '1' to pick Green Tip
+        await pilot.press("1")
+        await pilot.pause()
+
+        editor = app.query_one("#text-editor")
+        assert "[!TIP]" in editor.text
