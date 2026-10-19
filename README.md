@@ -80,10 +80,13 @@ note sync
 
 | Shortcut | Description |
 |---|---|
+| `Ctrl+P` / `F2` | **Preview / Toggle View & Edit** (Auto-saves immediately) |
+| `Ctrl+W` | **Split Screen Mode** (Side-by-side editor + live markdown rendering) |
+| `e` | Enter **Edit** mode |
+| `Ctrl+S` | Save current edits manually |
+| `Escape` | Return to **View** mode (Auto-saves) / Focus notes list |
 | `n` | Create a new note dialog (Title + Tags) |
 | `j` | Open or create today's daily journal (`YYYY-MM-DD.md`) |
-| `e` | Toggle between **View** and **Edit** mode |
-| `Ctrl+S` | Save current edits in TUI |
 | `Ctrl+B` | **Bold** selection or insert `**bold text**` |
 | `Ctrl+I` | *Italic* selection or insert `*italic text*` |
 | `Ctrl+K` | Inline code or code block `` `code` `` |
@@ -92,15 +95,25 @@ note sync
 | `Ctrl+E` | Open note in external `$EDITOR` (Neovim/Vim/Nano) |
 | `d` | Delete current note (with confirmation prompt) |
 | `/` | Focus search bar |
-| `Escape` | Exit search / Exit edit mode / Focus notes list |
 | `?` | Show interactive help modal |
 | `q` / `Ctrl+Q` | Quit application |
 
 ---
 
+## 3 Workspaces & Modes (Auto-Save Built-in)
+
+No more friction when writing notes. You don't need to manually save before previewing:
+1. **👁 View Mode (`Ctrl+P` / `Escape`)**: Clean, formatted Rich Markdown rendering.
+2. **📝 Edit Mode (`e`)**: In-terminal code & text editor with markdown formatting toolbar.
+3. **◫ Split Screen Mode (`Ctrl+W`)**: Side-by-side editor and live preview that updates in real-time as you type!
+
+*Switching between any mode or selecting another note automatically persists your changes to disk and updates the SQLite FTS5 search index.*
+
+---
+
 ## Markdown Formatting Toolbar
 
-When in **Edit mode** (`e`), an interactive formatting toolbar is available above the text editor:
+When in **Edit** or **Split** mode, an interactive formatting toolbar is available above the text editor:
 - **`𝐁 Bold`**: Wraps selection in `**bold**`
 - **`𝐼 Italic`**: Wraps selection in `*italic*`
 - **`⟨/⟩ Code`**: Wraps selection in code formatting

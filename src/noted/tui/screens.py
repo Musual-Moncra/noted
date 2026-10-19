@@ -90,10 +90,13 @@ class HelpModal(ModalScreen[None]):
     ]
 
     SHORTCUTS = [
+        ("[bold cyan]ctrl+p / f2[/bold cyan]", "Toggle Preview & Edit (Auto-saves note)"),
+        ("[bold cyan]ctrl+w[/bold cyan]", "Toggle Split Screen (Side-by-side live preview)"),
+        ("[bold cyan]escape[/bold cyan]", "Return to View mode (Auto-saves) / Close modal"),
+        ("[bold cyan]e[/bold cyan]", "Enter in-terminal Edit mode"),
+        ("[bold cyan]ctrl+s[/bold cyan]", "Save note changes in TUI editor"),
         ("[bold cyan]n[/bold cyan]", "Create a new note"),
         ("[bold cyan]j[/bold cyan]", "Open/create today's journal"),
-        ("[bold cyan]e[/bold cyan]", "Toggle in-terminal Edit / View mode"),
-        ("[bold cyan]ctrl+s[/bold cyan]", "Save note changes in TUI editor"),
         ("[bold cyan]ctrl+b[/bold cyan]", "Bold selection or insert **bold**"),
         ("[bold cyan]ctrl+i[/bold cyan]", "Italic selection or insert *italic*"),
         ("[bold cyan]ctrl+k[/bold cyan]", "Code selection or insert `code`"),
@@ -102,7 +105,6 @@ class HelpModal(ModalScreen[None]):
         ("[bold cyan]ctrl+e[/bold cyan]", "Open note in external $EDITOR"),
         ("[bold cyan]d[/bold cyan]", "Delete current note"),
         ("[bold cyan]/[/bold cyan]", "Focus search bar"),
-        ("[bold cyan]escape[/bold cyan]", "Unfocus search / Exit edit mode / Close modal"),
         ("[bold cyan]?[/bold cyan]", "Show this help screen"),
         ("[bold cyan]q / ctrl+q[/bold cyan]", "Quit application"),
     ]

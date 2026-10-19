@@ -34,6 +34,9 @@ class NotedApp(App[None]):
         Binding("n", "new_note", "New Note", show=True),
         Binding("j", "today_journal", "Today", show=True),
         Binding("e", "toggle_edit", "Edit/View", show=True),
+        Binding("ctrl+p", "toggle_preview", "Preview", show=True, priority=True),
+        Binding("f2", "toggle_preview", "View/Edit", show=False, priority=True),
+        Binding("ctrl+w", "toggle_split", "Split View", show=True, priority=True),
         Binding("ctrl+s", "save_note", "Save", show=True, priority=True),
         Binding("ctrl+b", "format_bold", "Bold", show=False, priority=True),
         Binding("ctrl+i", "format_italic", "Italic", show=False, priority=True),
@@ -43,7 +46,7 @@ class NotedApp(App[None]):
         Binding("ctrl+e", "open_external", "$EDITOR", show=True),
         Binding("d", "delete_note", "Delete", show=True),
         Binding("slash", "focus_search", "Search", show=True),
-        Binding("escape", "focus_list", "Focus List", show=False),
+        Binding("escape", "exit_edit_mode", "View/List", show=False, priority=True),
         Binding("question_mark", "show_help", "Help", show=True),
     ]
 
@@ -55,7 +58,15 @@ class NotedApp(App[None]):
         self.db: DatabaseManager
         self.indexer: NoteIndexer
         self.current_note: Optional[Note] = None
-        self.edit_mode: bool = False
+        self.note_mode: str = "view"  # "view", "edit", or "split"
+
+    @property
+    def edit_mode(self) -> bool:
+        return self.note_mode in ["edit", "split"]
+
+    @edit_mode.setter
+    def edit_mode(self, val: bool) -> None:
+        self.set_mode("edit" if val else "view")
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -65,18 +76,19 @@ class NotedApp(App[None]):
                 yield ListView(id="notes-list")
             with Vertical(id="content-area"):
                 yield MetadataHeader(id="metadata-header")
-                with Container(id="view-container"):
-                    yield Markdown(id="markdown-viewer")
-                with Container(id="edit-container"):
-                    with Horizontal(id="formatting-toolbar"):
-                        yield Button("𝐁 Bold", id="btn-fmt-bold", classes="fmt-btn")
-                        yield Button("𝐼 Italic", id="btn-fmt-italic", classes="fmt-btn")
-                        yield Button("⟨/⟩ Code", id="btn-fmt-code", classes="fmt-btn")
-                        yield Button("H# Heading", id="btn-fmt-heading", classes="fmt-btn")
-                        yield Button("☑ Todo", id="btn-fmt-todo", classes="fmt-btn")
-                        yield Button("❝ Quote", id="btn-fmt-quote", classes="fmt-btn")
-                        yield Button("💡 Tip/Callout", id="btn-fmt-callout", classes="fmt-btn")
-                    yield TextArea(id="text-editor", language="markdown")
+                with Horizontal(id="main-workspace"):
+                    with Container(id="edit-container"):
+                        with Horizontal(id="formatting-toolbar"):
+                            yield Button("𝐁 Bold", id="btn-fmt-bold", classes="fmt-btn")
+                            yield Button("𝐼 Italic", id="btn-fmt-italic", classes="fmt-btn")
+                            yield Button("⟨/⟩ Code", id="btn-fmt-code", classes="fmt-btn")
+                            yield Button("H# Heading", id="btn-fmt-heading", classes="fmt-btn")
+                            yield Button("☑ Todo", id="btn-fmt-todo", classes="fmt-btn")
+                            yield Button("❝ Quote", id="btn-fmt-quote", classes="fmt-btn")
+                            yield Button("💡 Tip/Callout", id="btn-fmt-callout", classes="fmt-btn")
+                        yield TextArea(id="text-editor", language="markdown")
+                    with Container(id="view-container"):
+                        yield Markdown(id="markdown-viewer")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -87,18 +99,9 @@ class NotedApp(App[None]):
         self.indexer.sync_all()
 
         # Initial view state: Markdown view active, TextArea hidden
-        self.query_one("#edit-container").display = False
-        self.query_one("#view-container").display = True
-
+        self.set_mode("view")
         self.refresh_notes_list()
         self.query_one("#notes-list", ListView).focus()
-
-    def action_focus_list(self) -> None:
-        """Shifts focus back to the notes list and exits edit mode if active."""
-        if self.edit_mode:
-            self.action_toggle_edit()
-        else:
-            self.query_one("#notes-list", ListView).focus()
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id == "search-input":
@@ -122,7 +125,7 @@ class NotedApp(App[None]):
             self.load_note_by_summary(notes[selected_idx])
         else:
             self.current_note = None
-            self.query_one("#metadata-header", MetadataHeader).update_metadata(None, False)
+            self.query_one("#metadata-header", MetadataHeader).update_metadata(None, "view")
             self.query_one("#markdown-viewer", Markdown).update("*No notes available. Press [bold cyan]n[/bold cyan] to create one or [bold cyan]j[/bold cyan] for today's journal.*")
             self.query_one("#text-editor", TextArea).text = ""
 
@@ -137,10 +140,13 @@ class NotedApp(App[None]):
             body = self.current_note.body or "*Empty note.*"
             self.query_one("#markdown-viewer", Markdown).update(body)
             self.query_one("#text-editor", TextArea).text = self.current_note.body
-            self.query_one("#metadata-header", MetadataHeader).update_metadata(self.current_note, self.edit_mode)
+            self.query_one("#metadata-header", MetadataHeader).update_metadata(self.current_note, self.note_mode)
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         if isinstance(event.item, NoteListItem):
+            # Auto-save current note before switching to another note!
+            if self.note_mode in ["edit", "split"] and self.current_note:
+                self.save_current_note(silent=True)
             self.load_note_by_summary(event.item.summary)
 
     def on_input_changed(self, event: Input.Changed) -> None:
@@ -163,35 +169,80 @@ class NotedApp(App[None]):
                 self.load_note_by_summary(notes[0])
             else:
                 self.current_note = None
-                self.query_one("#metadata-header", MetadataHeader).update_metadata(None, False)
+                self.query_one("#metadata-header", MetadataHeader).update_metadata(None, "view")
                 self.query_one("#markdown-viewer", Markdown).update(f"*No notes match query '[bold]{query}[/bold]'.*")
                 self.query_one("#text-editor", TextArea).text = ""
 
-    def action_toggle_edit(self) -> None:
-        """Toggles between View and Edit mode."""
+    def on_text_area_changed(self, event: TextArea.Changed) -> None:
+        """Live-updates the markdown viewer in Split mode as the user types."""
+        if self.note_mode == "split":
+            self.query_one("#markdown-viewer", Markdown).update(event.text_area.text or "*Empty note.*")
+
+    def set_mode(self, mode: str) -> None:
+        """Switches between 'view', 'edit', and 'split' mode with automatic saving."""
         if not self.current_note:
             return
 
-        self.edit_mode = not self.edit_mode
+        # Auto-save when leaving edit or split mode to view mode
+        if self.note_mode in ["edit", "split"] and mode == "view":
+            self.save_current_note(silent=True)
+
+        self.note_mode = mode
         view_container = self.query_one("#view-container")
         edit_container = self.query_one("#edit-container")
+        editor = self.query_one("#text-editor", TextArea)
+        viewer = self.query_one("#markdown-viewer", Markdown)
 
-        if self.edit_mode:
-            view_container.display = False
-            edit_container.display = True
-            editor = self.query_one("#text-editor", TextArea)
-            editor.focus()
-        else:
-            # Update viewer with editor's current contents
-            editor = self.query_one("#text-editor", TextArea)
-            self.query_one("#markdown-viewer", Markdown).update(editor.text)
+        if mode == "view":
+            viewer.update(editor.text or "*Empty note.*")
             edit_container.display = False
             view_container.display = True
+            self.query_one("#notes-list", ListView).focus()
+        elif mode == "edit":
+            edit_container.display = True
+            view_container.display = False
+            editor.focus()
+        elif mode == "split":
+            viewer.update(editor.text or "*Empty note.*")
+            edit_container.display = True
+            view_container.display = True
+            editor.focus()
 
-        self.query_one("#metadata-header", MetadataHeader).update_metadata(self.current_note, self.edit_mode)
+        self.query_one("#metadata-header", MetadataHeader).update_metadata(self.current_note, self.note_mode)
 
-    def action_save_note(self) -> None:
-        """Saves current note edits to disk and updates SQLite index."""
+    def action_toggle_edit(self) -> None:
+        """Toggles between View and Edit mode with automatic saving."""
+        if self.note_mode == "view":
+            self.set_mode("edit")
+        else:
+            self.set_mode("view")
+
+    def action_toggle_preview(self) -> None:
+        """One-key toggle between preview and edit mode with auto-save."""
+        if self.note_mode in ["edit", "split"]:
+            self.set_mode("view")
+        else:
+            self.set_mode("edit")
+
+    def action_toggle_split(self) -> None:
+        """Toggles side-by-side editing and live preview."""
+        if self.note_mode == "split":
+            self.set_mode("view")
+        else:
+            self.set_mode("split")
+
+    def action_exit_edit_mode(self) -> None:
+        """Exits edit/split mode, auto-saves, and focuses the notes list."""
+        if self.note_mode in ["edit", "split"]:
+            self.set_mode("view")
+        else:
+            self.query_one("#notes-list", ListView).focus()
+
+    def action_focus_list(self) -> None:
+        self.action_exit_edit_mode()
+
+    def save_current_note(self, silent: bool = False) -> None:
+        """Persists current note edits to disk and updates SQLite index."""
         if not self.current_note:
             return
 
@@ -201,8 +252,15 @@ class NotedApp(App[None]):
         self.indexer.index_note(self.current_note)
 
         # Update viewer
-        self.query_one("#markdown-viewer", Markdown).update(self.current_note.body)
-        self.notify("Note saved successfully!", title="Saved", severity="information")
+        self.query_one("#markdown-viewer", Markdown).update(self.current_note.body or "*Empty note.*")
+        if not silent:
+            self.notify("Đã lưu ghi chú thành công!", title="Saved", severity="information")
+        else:
+            self.notify("Tự động lưu ✓", severity="information")
+
+    def action_save_note(self) -> None:
+        """Manual save via Ctrl+S or Save button."""
+        self.save_current_note(silent=False)
 
     def action_new_note(self) -> None:
         """Opens modal to create a new note."""
@@ -336,7 +394,15 @@ class NotedApp(App[None]):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         btn_id = event.button.id
-        if btn_id == "btn-fmt-bold":
+        if btn_id == "btn-mode-view":
+            self.set_mode("view")
+        elif btn_id == "btn-mode-edit":
+            self.set_mode("edit")
+        elif btn_id == "btn-mode-split":
+            self.set_mode("split")
+        elif btn_id == "btn-mode-save":
+            self.action_save_note()
+        elif btn_id == "btn-fmt-bold":
             self.action_format_bold()
         elif btn_id == "btn-fmt-italic":
             self.action_format_italic()

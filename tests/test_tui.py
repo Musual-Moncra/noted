@@ -127,3 +127,106 @@ async def test_tui_formatting_shortcuts(tmp_path, monkeypatch):
         # Test todo checkbox formatting
         app.action_format_todo()
         assert "- [ ]" in editor.text
+
+@pytest.mark.asyncio
+async def test_tui_auto_save_on_view_toggle(tmp_path, monkeypatch):
+    notes_dir = tmp_path / "tui_auto_save"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    n = storage.create_note(title="Auto Save Note", body="Initial content")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        # Enter edit mode
+        await pilot.press("e")
+        await pilot.pause()
+        assert app.edit_mode is True
+
+        editor = app.query_one("#text-editor")
+        editor.text = "New content that should auto-save on view toggle."
+
+        # Switch to view mode without pressing ctrl+s
+        await pilot.press("ctrl+p")
+        await pilot.pause()
+        assert app.edit_mode is False
+
+        # Verify on-disk file was updated automatically
+        updated = storage.read_note(n.filepath)
+        assert "New content that should auto-save on view toggle." in updated.body
+
+@pytest.mark.asyncio
+async def test_tui_split_mode_and_live_preview(tmp_path, monkeypatch):
+    notes_dir = tmp_path / "tui_split_mode"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    n = storage.create_note(title="Split Test Note", body="Initial markdown")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        # Toggle split mode with ctrl+w
+        await pilot.press("ctrl+w")
+        await pilot.pause()
+        assert app.note_mode == "split"
+        assert app.edit_mode is True
+
+        # Both edit and view containers should be visible
+        assert app.query_one("#edit-container").display is True
+        assert app.query_one("#view-container").display is True
+
+        # Type in editor and verify live preview updates
+        editor = app.query_one("#text-editor")
+        editor.text = "# Live Rendered Title"
+        await pilot.pause()
+
+        # Switch to view mode via Escape
+        await pilot.press("escape")
+        await pilot.pause()
+        assert app.note_mode == "view"
+
+        # Verify auto-save worked
+        updated = storage.read_note(n.filepath)
+        assert "# Live Rendered Title" in updated.body
+
+@pytest.mark.asyncio
+async def test_tui_mode_buttons(tmp_path, monkeypatch):
+    notes_dir = tmp_path / "tui_mode_buttons"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    storage.create_note(title="Mode Buttons Note", body="Testing buttons")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        assert app.note_mode == "view"
+
+        # Click Edit button
+        await pilot.click("#btn-mode-edit")
+        await pilot.pause()
+        assert app.note_mode == "edit"
+
+        # Click Split button
+        await pilot.click("#btn-mode-split")
+        await pilot.pause()
+        assert app.note_mode == "split"
+
+        # Click View button
+        await pilot.click("#btn-mode-view")
+        await pilot.pause()
+        assert app.note_mode == "view"

@@ -1,5 +1,6 @@
 from textual.app import ComposeResult
-from textual.widgets import ListItem, Static
+from textual.containers import Horizontal
+from textual.widgets import Button, ListItem, Static
 from noted.models import Note, NoteSummary
 
 class NoteListItem(ListItem):
@@ -22,22 +23,38 @@ class NoteListItem(ListItem):
         )
         yield Static(text, classes="note-item-text")
 
-class MetadataHeader(Static):
-    """Header bar showing current note metadata and editing mode."""
+class MetadataHeader(Horizontal):
+    """Header bar showing current note metadata and interactive mode buttons."""
 
-    def update_metadata(self, note: Note | None, edit_mode: bool) -> None:
+    def compose(self) -> ComposeResult:
+        yield Static("[dim]No note selected[/dim]", id="metadata-info")
+        with Horizontal(id="mode-button-group"):
+            yield Button("👁 Xem (Ctrl+P)", id="btn-mode-view", classes="mode-btn -active")
+            yield Button("📝 Soạn", id="btn-mode-edit", classes="mode-btn")
+            yield Button("◫ Song song", id="btn-mode-split", classes="mode-btn")
+            yield Button("💾 Lưu", id="btn-mode-save", classes="mode-btn")
+
+    def update_metadata(self, note: Note | None, current_mode: str) -> None:
+        info_widget = self.query_one("#metadata-info", Static)
         if not note:
-            self.update("[dim]No note selected[/dim]")
+            info_widget.update("[dim]No note selected[/dim]")
             return
 
-        mode_badge = "[bold yellow on dark_goldenrod] EDIT [/bold yellow on dark_goldenrod]" if edit_mode else "[bold white on dark_green] VIEW [/bold white on dark_green]"
         icon = "📓" if note.note_type == "journal" else "📝"
         tags_badge = " ".join(f"[blue]#{t}[/blue]" for t in note.tags) if note.tags else "[dim]none[/dim]"
         formatted_date = note.date.replace("T", " ")[:16]
 
         content = (
-            f"{mode_badge}  {icon} [bold white]{note.title}[/bold white]   "
-            f"[dim]({formatted_date})[/dim]   "
+            f"{icon} [bold white]{note.title}[/bold white]  "
+            f"[dim]({formatted_date})[/dim]  "
             f"Tags: {tags_badge}"
         )
-        self.update(content)
+        info_widget.update(content)
+
+        # Update active classes on mode buttons
+        for mode in ["view", "edit", "split"]:
+            btn = self.query_one(f"#btn-mode-view" if mode == "view" else f"#btn-mode-{mode}", Button)
+            if mode == current_mode:
+                btn.add_class("-active")
+            else:
+                btn.remove_class("-active")

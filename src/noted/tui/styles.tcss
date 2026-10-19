@@ -49,19 +49,60 @@ Screen {
 #metadata-header {
     height: 3;
     border-bottom: solid $primary-darken-2;
-    padding: 0 2;
+    padding: 0 1;
     background: $surface-darken-1;
+    layout: horizontal;
+    align-vertical: middle;
+}
+
+#metadata-info {
+    width: 1fr;
     content-align: left middle;
+}
+
+#mode-button-group {
+    width: auto;
+    height: 1;
+    align: right middle;
+}
+
+.mode-btn {
+    min-width: 10;
+    height: 1;
+    padding: 0 1;
+    margin-left: 1;
+    border: none;
+    background: $surface;
+    color: $text-muted;
+}
+
+.mode-btn:hover {
+    background: $surface-lighten-1;
+    color: $text;
+}
+
+.mode-btn.-active {
+    background: $primary;
+    color: $text;
+    text-style: bold;
+}
+
+#main-workspace {
+    layout: horizontal;
+    height: 1fr;
+    width: 1fr;
 }
 
 #view-container {
     height: 1fr;
+    width: 1fr;
     padding: 1 2;
     overflow-y: auto;
 }
 
 #edit-container {
     height: 1fr;
+    width: 1fr;
     padding: 0;
 }
 
