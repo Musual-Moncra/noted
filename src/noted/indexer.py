@@ -212,11 +212,17 @@ class NoteIndexer:
                     (ident,),
                 ).fetchone()
 
-            # 3. Date prefix or path match
+            # 3. Title, slug, date prefix or path match
             if not row:
+                from noted.frontmatter import slugify
+                slug_ident = slugify(ident)
                 row = conn.execute(
-                    "SELECT filepath FROM notes WHERE date LIKE ? OR filepath LIKE ? LIMIT 1;",
-                    (f"{ident}%", f"%{ident}%"),
+                    """
+                    SELECT filepath FROM notes
+                    WHERE title LIKE ? OR date LIKE ? OR filepath LIKE ? OR filepath LIKE ?
+                    LIMIT 1;
+                    """,
+                    (f"%{ident}%", f"{ident}%", f"%{ident}%", f"%{slug_ident}%"),
                 ).fetchone()
 
             if row:
