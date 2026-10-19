@@ -1,14 +1,15 @@
 import os
 import unicodedata
 import pytest
-from textual import constants
+from textual import constants, events
+from textual.app import App, ComposeResult
 from textual.widgets.text_area import Location
 from noted.config import Config
 from noted.db import DatabaseManager
 from noted.indexer import NoteIndexer
 from noted.storage import StorageManager
 from noted.tui.app import NotedApp
-from noted.tui.widgets import VietnameseTextArea
+from noted.tui.widgets import VietnameseInput, VietnameseTextArea
 
 def test_textual_disable_kitty_key_is_set():
     """Verify that Kitty Keyboard Protocol is disabled to prevent dropped backspaces in IMEs."""
@@ -67,6 +68,74 @@ def test_vietnamese_text_area_all_tones_and_vowels():
             editor.cursor_location = (0, len(v))
             editor._replace_via_keyboard(mark, (0, len(v)), (0, len(v)))
             assert editor.text == expected, f"Failed for {v} + {tone_marks[mark]}: got {editor.text}, expected {expected}"
+
+class StandaloneEditorApp(App):
+    def compose(self) -> ComposeResult:
+        yield VietnameseTextArea(id="editor")
+
+@pytest.mark.asyncio
+async def test_gotiengviet_rapid_burst_typing():
+    """Verify GoTiengViet rapid synthetic backspaces and replacements are executed in exact order."""
+    app = StandaloneEditorApp()
+    async with app.run_test() as pilot:
+        editor = app.query_one("#editor", VietnameseTextArea)
+
+        # Case 1: typing 'khoas' -> GoTiengViet sends k, h, o, a, bs, bs, ó, a in a single queue burst
+        for k in ["k", "h", "o", "a", "\x7f", "\x7f", "ó", "a"]:
+            if k == "\x7f":
+                app.post_message(events.Key("backspace", "\x7f"))
+            else:
+                app.post_message(events.Key(k, k))
+
+        await pilot.pause()
+        assert editor.text == "khóa"
+
+        # Case 2: typing 'tieengs' -> 'tiếng'
+        editor.text = ""
+        editor.cursor_location = (0, 0)
+        seq2 = ["t", "i", "e", "\x7f", "ê", "n", "g", "\x7f", "\x7f", "\x7f", "\x7f", "i", "ế", "n", "g"]
+        for k in seq2:
+            if k == "\x7f":
+                app.post_message(events.Key("backspace", "\x7f"))
+            else:
+                app.post_message(events.Key(k, k))
+
+        await pilot.pause()
+        assert editor.text == "tiếng"
+
+        # Case 3: typing 'ddwowjc' -> 'được'
+        editor.text = ""
+        editor.cursor_location = (0, 0)
+        seq3 = ["d", "\x7f", "đ", "ư", "ơ", "c", "\x7f", "\x7f", "\x7f", "ư", "ợ", "c"]
+        for k in seq3:
+            if k == "\x7f":
+                app.post_message(events.Key("backspace", "\x7f"))
+            else:
+                app.post_message(events.Key(k, k))
+
+        await pilot.pause()
+        assert editor.text == "được"
+
+class StandaloneInputApp(App):
+    def compose(self) -> ComposeResult:
+        yield VietnameseInput(id="search")
+
+@pytest.mark.asyncio
+async def test_gotiengviet_rapid_burst_in_input():
+    """Verify VietnameseInput also processes rapid GoTiengViet backspace/replacement bursts cleanly."""
+    app = StandaloneInputApp()
+    async with app.run_test() as pilot:
+        inp = app.query_one("#search", VietnameseInput)
+
+        # Rapid typing 'khoas' -> 'khóa'
+        for k in ["k", "h", "o", "a", "\x7f", "\x7f", "ó", "a"]:
+            if k == "\x7f":
+                app.post_message(events.Key("backspace", "\x7f"))
+            else:
+                app.post_message(events.Key(k, k))
+
+        await pilot.pause()
+        assert inp.value == "khóa"
 
 @pytest.mark.asyncio
 async def test_tui_vietnamese_typing_and_saving(tmp_path, monkeypatch):

@@ -1,14 +1,17 @@
 import unicodedata
+from textual import events
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.document._document import EditResult, Location
-from textual.widgets import Button, ListItem, Static, TextArea
+from textual.widgets import Button, Input, ListItem, Static, TextArea
 from noted.models import Note, NoteSummary
 
 class VietnameseTextArea(TextArea):
-    """Enhanced TextArea optimized for Vietnamese IMEs (Telex, Simple Telex, EVKey, OpenKey, UniKey).
+    """Enhanced TextArea optimized for Vietnamese IMEs (GoTiengViet, EVKey, OpenKey, UniKey).
 
     Key enhancements:
+    - Synchronous key dispatch for backspace, delete, and navigation in _on_key to eliminate
+      the race condition where rapid synthetic backspaces and replacement characters interleave.
     - Normalizes all typed, pasted, or loaded text to standard Unicode NFC (precomposed).
     - Automatically combines standalone combining diacritical marks (Unicode category 'Mn', e.g. acute,
       grave, hook, tilde, dot-below) with preceding vowels, preventing double-vowels or dropped tone marks.
@@ -32,6 +35,50 @@ class VietnameseTextArea(TextArea):
         if insert:
             insert = unicodedata.normalize("NFC", insert)
         return super().replace(insert, start, end, maintain_selection_offset=maintain_selection_offset)
+
+    async def _on_key(self, event: events.Key) -> None:
+        """Synchronously handle editing keys at the widget level.
+
+        This eliminates race conditions with external IMEs (GoTiengViet, EVKey, OpenKey)
+        where rapid bursts of synthetic Backspaces and replacement characters arrive in
+        the same input buffer. Handling backspaces directly in _on_key ensures they execute
+        in exact chronological order before subsequent printable characters are inserted.
+        """
+        if self.read_only:
+            return
+
+        if event.key == "backspace":
+            event.stop()
+            event.prevent_default()
+            self.action_delete_left()
+            return
+        elif event.key == "delete":
+            event.stop()
+            event.prevent_default()
+            self.action_delete_right()
+            return
+        elif event.key == "left":
+            event.stop()
+            event.prevent_default()
+            self.action_cursor_left()
+            return
+        elif event.key == "right":
+            event.stop()
+            event.prevent_default()
+            self.action_cursor_right()
+            return
+        elif event.key == "shift+left":
+            event.stop()
+            event.prevent_default()
+            self.action_cursor_left(True)
+            return
+        elif event.key == "shift+right":
+            event.stop()
+            event.prevent_default()
+            self.action_cursor_right(True)
+            return
+
+        await super()._on_key(event)
 
     def _replace_via_keyboard(
         self,
@@ -57,6 +104,49 @@ class VietnameseTextArea(TextArea):
 
         return super()._replace_via_keyboard(norm_insert, start, end)
 
+
+class VietnameseInput(Input):
+    """Enhanced Input widget optimized for Vietnamese IMEs (GoTiengViet, EVKey, OpenKey).
+
+    Handles Backspace and Delete synchronously at the widget level to prevent
+    out-of-order execution when typing search terms or note titles quickly.
+    """
+
+    def insert_text_at_cursor(self, text: str) -> None:
+        if text:
+            text = unicodedata.normalize("NFC", text)
+        super().insert_text_at_cursor(text)
+
+    def replace(self, text: str, start: int, end: int) -> None:
+        if text:
+            text = unicodedata.normalize("NFC", text)
+        super().replace(text, start, end)
+
+    async def _on_key(self, event: events.Key) -> None:
+        if event.key == "backspace":
+            event.stop()
+            event.prevent_default()
+            self.action_delete_left()
+            return
+        elif event.key == "delete":
+            event.stop()
+            event.prevent_default()
+            self.action_delete_right()
+            return
+        elif event.key == "left":
+            event.stop()
+            event.prevent_default()
+            self.action_cursor_left()
+            return
+        elif event.key == "right":
+            event.stop()
+            event.prevent_default()
+            self.action_cursor_right()
+            return
+
+        await super()._on_key(event)
+
+
 class NoteListItem(ListItem):
     """A list item representing a note summary in the sidebar."""
 
@@ -76,6 +166,7 @@ class NoteListItem(ListItem):
             f"   [dim]{short_date}[/dim]{tags_str}"
         )
         yield Static(text, classes="note-item-text")
+
 
 class MetadataHeader(Horizontal):
     """Header bar showing current note metadata and interactive mode buttons."""

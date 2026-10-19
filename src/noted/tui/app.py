@@ -34,7 +34,7 @@ from noted.indexer import NoteIndexer
 from noted.models import Note, NoteSummary
 from noted.storage import StorageManager
 from noted.tui.screens import ColorFormatModal, ConfirmDeleteModal, HelpModal, NewNoteModal
-from noted.tui.widgets import MetadataHeader, NoteListItem, VietnameseTextArea
+from noted.tui.widgets import MetadataHeader, NoteListItem, VietnameseInput, VietnameseTextArea
 
 class NotedApp(App[None]):
     """Main interactive Textual Terminal Application for noted."""
@@ -88,7 +88,7 @@ class NotedApp(App[None]):
         yield Header()
         with Horizontal(id="main-container"):
             with Vertical(id="sidebar"):
-                yield Input(placeholder="Search notes... [/]", id="search-input")
+                yield VietnameseInput(placeholder="Search notes... [/]", id="search-input")
                 yield ListView(id="notes-list")
             with Vertical(id="content-area"):
                 yield MetadataHeader(id="metadata-header")

@@ -5,6 +5,7 @@ from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Input, Label, Static
+from noted.tui.widgets import VietnameseInput
 
 class NewNoteModal(ModalScreen[Optional[Tuple[str, list[str]]]]):
     """Modal dialog to create a new note with Title and Tags."""
@@ -17,9 +18,9 @@ class NewNoteModal(ModalScreen[Optional[Tuple[str, list[str]]]]):
         with Vertical(classes="modal-dialog"):
             yield Label("Create New Note", classes="dialog-title")
             yield Label("Title:")
-            yield Input(placeholder="e.g. Architecture Ideas", id="input-title")
+            yield VietnameseInput(placeholder="e.g. Architecture Ideas", id="input-title")
             yield Label("Tags (comma-separated):")
-            yield Input(placeholder="e.g. dev, python, cli", id="input-tags")
+            yield VietnameseInput(placeholder="e.g. dev, python, cli", id="input-tags")
             with Horizontal(classes="modal-buttons"):
                 yield Button("Cancel", id="btn-cancel", variant="default")
                 yield Button("Create", id="btn-create", variant="primary")
