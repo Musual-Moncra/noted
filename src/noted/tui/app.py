@@ -443,6 +443,8 @@ class NotedApp(App[None]):
             self.set_mode("edit")
         elif btn_id == "btn-mode-split":
             self.set_mode("split")
+        elif btn_id == "btn-mode-ext":
+            self.action_open_external()
         elif btn_id == "btn-mode-save":
             self.action_save_note()
         elif btn_id == "btn-fmt-bold":
