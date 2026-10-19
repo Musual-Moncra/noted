@@ -90,4 +90,34 @@ def test_rename_note(storage):
     assert loaded.title == "Tiêu Đề Mới (New Title)"
     assert loaded.body.strip() == "Body content"
 
+def test_lock_and_unlock_note(storage):
+    note = storage.create_note(title="Private Note", body="Top secret plans")
+    assert note.encrypted is False
+
+    storage.lock_note(note, "Pass123!")
+    assert note.encrypted is True
+    assert note.salt is not None
+    assert note.nonce is not None
+    assert "Top secret plans" not in note.body
+
+    # Read from disk
+    on_disk = storage.read_note(note.filepath)
+    assert on_disk.encrypted is True
+    assert "Top secret plans" not in on_disk.body
+
+    # Unlock in-memory
+    decrypted = storage.unlock_note(on_disk, "Pass123!")
+    assert decrypted == "Top secret plans"
+
+    # Remove lock
+    storage.remove_lock(on_disk, "Pass123!")
+    assert on_disk.encrypted is False
+    assert on_disk.salt is None
+    assert on_disk.nonce is None
+
+    reloaded = storage.read_note(note.filepath)
+    assert reloaded.encrypted is False
+    assert reloaded.body.strip() == "Top secret plans"
+
+
 

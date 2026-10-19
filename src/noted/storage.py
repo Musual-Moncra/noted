@@ -4,6 +4,7 @@ import unicodedata
 from datetime import date, datetime
 from pathlib import Path
 from noted.config import Config
+from noted.crypto import encrypt_body, decrypt_body
 from noted.frontmatter import (
     generate_note_id,
     parse_frontmatter,
@@ -95,6 +96,10 @@ class StorageManager:
         else:
             tags = ["journal"] if is_journal else []
 
+        encrypted = bool(metadata.get("encrypted", False))
+        salt = metadata.get("salt")
+        nonce = metadata.get("nonce")
+
         return Note(
             id=note_id,
             title=title,
@@ -104,7 +109,35 @@ class StorageManager:
             body=body,
             filepath=filepath,
             mtime_ns=mtime_ns,
+            encrypted=encrypted,
+            salt=str(salt) if salt else None,
+            nonce=str(nonce) if nonce else None,
         )
+
+    def lock_note(self, note: Note, password: str) -> Path:
+        """Encrypts note body with password and saves to disk."""
+        ciphertext_b64, salt_hex, nonce_hex = encrypt_body(note.body, password)
+        note.body = ciphertext_b64
+        note.encrypted = True
+        note.salt = salt_hex
+        note.nonce = nonce_hex
+        return self.save_note(note)
+
+    def unlock_note(self, note: Note, password: str) -> str:
+        """Decrypts note body in-memory and returns decrypted plaintext without writing to disk."""
+        if not note.encrypted or not note.salt or not note.nonce:
+            return note.body
+        return decrypt_body(note.body, password, note.salt, note.nonce)
+
+    def remove_lock(self, note: Note, password: str) -> Path:
+        """Decrypts note body and permanently saves as unencrypted markdown."""
+        decrypted = self.unlock_note(note, password)
+        note.body = decrypted
+        note.encrypted = False
+        note.salt = None
+        note.nonce = None
+        return self.save_note(note)
+
 
     def create_note(
         self,
