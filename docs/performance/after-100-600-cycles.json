@@ -1,0 +1,79 @@
+{
+  "platform": "macOS-27.0-arm64-arm-64bit",
+  "python": "3.11.16",
+  "notes": 100,
+  "animation": "subtle",
+  "cold_index_ms": 50.0,
+  "search_p95_ms": 2.13,
+  "search_p95_with_debounce_ms": 152.13,
+  "warm_start_ms": 781.7,
+  "rss_ready_mib": 70.66,
+  "cycle_rss": [
+    {
+      "cycles": 50,
+      "rss_mib": 75.73,
+      "widget_objects": 323
+    },
+    {
+      "cycles": 100,
+      "rss_mib": 77.92,
+      "widget_objects": 339
+    },
+    {
+      "cycles": 150,
+      "rss_mib": 79.66,
+      "widget_objects": 307
+    },
+    {
+      "cycles": 200,
+      "rss_mib": 80.72,
+      "widget_objects": 355
+    },
+    {
+      "cycles": 250,
+      "rss_mib": 83.45,
+      "widget_objects": 355
+    },
+    {
+      "cycles": 300,
+      "rss_mib": 84.11,
+      "widget_objects": 331
+    },
+    {
+      "cycles": 350,
+      "rss_mib": 84.33,
+      "widget_objects": 347
+    },
+    {
+      "cycles": 400,
+      "rss_mib": 85.7,
+      "widget_objects": 339
+    },
+    {
+      "cycles": 450,
+      "rss_mib": 86.97,
+      "widget_objects": 315
+    },
+    {
+      "cycles": 500,
+      "rss_mib": 88.05,
+      "widget_objects": 323
+    },
+    {
+      "cycles": 550,
+      "rss_mib": 91.02,
+      "widget_objects": 343
+    },
+    {
+      "cycles": 600,
+      "rss_mib": 93.28,
+      "widget_objects": 331
+    }
+  ],
+  "rss_large_edit_mib": 113.48,
+  "rss_large_view_mib": 108.17,
+  "idle_seconds": 2.0,
+  "idle_cpu_percent_one_core": 0.009,
+  "rss_final_mib": 110.14,
+  "peak_rss_mib": 117.45
+}

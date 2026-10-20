@@ -7,11 +7,19 @@
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20macOS%20%7C%20Windows-blue)](https://github.com/Musual-Moncra/noted)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-75%20passed-brightgreen.svg)]()
 
 ---
 
 ## Features
+
+### Organized, responsive, and resource conscious
+
+- Nested on-disk folders, editable tags with suggestions, combined filters, pinned notes, and reversible archive.
+- Quick capture into Inbox, one-second idle autosave, external-edit conflict handling, and visible save status.
+- Responsive navigation/list/workspace layout, English UI, shared dark palette, and optional subtle motion.
+- Bounded pages, lazy folder branches, active-note plaintext caching, and automatic lightweight mode for notes from 256 KiB.
+- See [workflow, configuration, previews, and measured resource usage](docs/optimization.md).
+
 
 - **Zero Lock-in**: All notes live in local Markdown files with YAML frontmatter (`~/.local/share/notes` on Linux/macOS, `~/.notes` or `%USERPROFILE%\.notes` on Windows). No proprietary database lock-in. Easily versionable with Git or searchable with `ripgrep`.
 - **AES-256-GCM Password Protection**: Encrypt sensitive notes at rest using authenticated AES-256-GCM with PBKDF2-HMAC-SHA256 (100k rounds). Session-level in-memory unlocking keeps plaintext confidential without leaking secrets to disk logs or SQLite FTS5 search indexes.
@@ -20,8 +28,8 @@
   - In-terminal Markdown viewer with rich formatting and prominent locked-note cards
   - Live in-terminal `TextArea` editor with instant `Ctrl+S` saving
   - Interactive formatting toolbar & keyboard shortcuts for bold, italics, code, headings, checkboxes, quotes, color highlights, and copy
-  - **Live Split-Screen (`Ctrl+W`)**: Real-time side-by-side editing and rendering
-  - **Zero-Friction Auto-Save**: Switching modes (`Ctrl+P`, `F2`, `Escape`) or clicking another note auto-saves your work immediately!
+  - **Live Split-Screen (`Ctrl+W`)**: Real-time side-by-side editing and rendering (160+ terminal columns)
+  - **Zero-Friction Auto-Save**: Saves after one second of inactivity. Switching modes (`Ctrl+P`, `F2`, `Escape`) or clicking another note auto-saves your work immediately!
   - **Vietnamese IME Smoothness**: Automatic Unicode NFC normalization, combining mark support, and disabled Kitty keyboard protocol for flawless Telex/EVKey/OpenKey typing.
 - **Clipboard Integration**: Copy full note or current editor selection to the system clipboard via `c` / `Ctrl+Y` or `note copy`.
 - **Safe Note Renaming**: Rename notes on the fly with `r` or `note rename`—automatically updates frontmatter, recalculates slug, and moves the disk file atomically.
@@ -143,7 +151,9 @@ note sync
 | Shortcut | Description |
 |---|---|
 | `Ctrl+P` / `F2` | **Preview / Toggle View & Edit** (Auto-saves immediately) |
-| `Ctrl+W` | **Split Screen Mode** (Side-by-side editor + live markdown rendering) |
+| `Ctrl+W` | **Split Screen Mode** (160+ columns; live preview for notes below 256 KiB) |
+| `Ctrl+N` | Quick capture into Inbox |
+| `Ctrl+O` / `Ctrl+L` | Toggle navigation / notes list |
 | `e` | Enter **Edit** mode |
 | `Ctrl+S` | Save current edits manually |
 | `Escape` | Return to **View** mode (Auto-saves) / Focus notes list |
@@ -163,7 +173,7 @@ note sync
 | `d` | Delete current note (with confirmation prompt) |
 | `/` | Focus search bar |
 | `?` | Show interactive help modal |
-| `q` / `Ctrl+Q` | Quit application |
+| `Ctrl+Q` | Save and quit application |
 
 ---
 
@@ -172,7 +182,7 @@ note sync
 No more friction when writing notes. You don't need to manually save before previewing:
 1. **👁 View Mode (`Ctrl+P` / `Escape`)**: Clean, formatted Rich Markdown rendering.
 2. **📝 Edit Mode (`e`)**: In-terminal code & text editor with markdown formatting toolbar.
-3. **◫ Split Screen Mode (`Ctrl+W`)**: Side-by-side editor and live preview that updates in real-time as you type!
+3. **◫ Split Screen Mode (`Ctrl+W`, 160+ columns)**: Side-by-side editor and live preview that updates in real-time as you type!
 
 *Switching between any mode or selecting another note automatically persists your changes to disk and updates the SQLite FTS5 search index.*
 

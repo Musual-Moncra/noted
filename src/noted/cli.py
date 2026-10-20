@@ -331,7 +331,7 @@ def rename_cmd(
     old_title = note.title
     storage.rename_note(note, new_title)
     indexer.index_note(note)
-    console.print(f"[bold green]✓[/bold green] Renamed note [bold cyan]{note.id}[/bold cyan]: '[dim]{old_title}[/dim]' → [bold white]'{note.title}'[/bold white]")
+    console.print(f"[bold green]✓[/bold green] Renamed note: '[dim]{old_title}[/dim]' → [bold white]'{note.title}'[/bold white]")
 
 if __name__ == "__main__":
     app()

@@ -1,10 +1,14 @@
 import unicodedata
+from rich.markup import escape
+from rich.text import Text
 from typing import Optional, Tuple
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Container, Horizontal, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Input, Label, Static
+from textual.widgets import Button, Input, Label, Static, Tree
+from pathlib import Path
+
 from noted.tui.widgets import VietnameseInput
 
 class NewNoteModal(ModalScreen[Optional[Tuple[str, list[str]]]]):
@@ -21,12 +25,19 @@ class NewNoteModal(ModalScreen[Optional[Tuple[str, list[str]]]]):
             yield VietnameseInput(placeholder="e.g. Architecture Ideas", id="input-title")
             yield Label("Tags (comma-separated):")
             yield VietnameseInput(placeholder="e.g. dev, python, cli", id="input-tags")
+            yield Static("", id="new-tag-suggestions", markup=False)
             with Horizontal(classes="modal-buttons"):
                 yield Button("Cancel", id="btn-cancel", variant="default")
                 yield Button("Create", id="btn-create", variant="primary")
 
     def on_mount(self) -> None:
         self.query_one("#input-title", Input).focus()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        if event.input.id == "input-tags":
+            query = event.value.split(',')[-1].strip()
+            tags = self.app.indexer.list_tags(query=query, limit=8)
+            self.query_one('#new-tag-suggestions', Static).update('Suggestions: ' + ', '.join(tag for tag, _ in tags))
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-create":
@@ -107,13 +118,13 @@ class UnlockNoteModal(ModalScreen[Optional[str]]):
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="modal-dialog"):
-            yield Label("🔓 Mở Khóa Ghi Chú", classes="dialog-title")
-            yield Static(f"Ghi chú: [bold cyan]{self.note_title}[/bold cyan]")
-            yield Label("Mật khẩu:")
-            yield VietnameseInput(password=True, placeholder="Nhập mật khẩu...", id="input-unlock-password")
+            yield Label("🔓 Unlock Note", classes="dialog-title")
+            yield Static(f"Note: [bold cyan]{escape(self.note_title)}[/bold cyan]")
+            yield Label("Password:")
+            yield VietnameseInput(password=True, placeholder="Enter password...", id="input-unlock-password")
             with Horizontal(classes="modal-buttons"):
                 yield Button("Cancel", id="btn-cancel", variant="default")
-                yield Button("Mở khóa", id="btn-unlock", variant="primary")
+                yield Button("Unlock", id="btn-unlock", variant="primary")
 
     def on_mount(self) -> None:
         self.query_one("#input-unlock-password", VietnameseInput).focus()
@@ -148,16 +159,16 @@ class LockNoteModal(ModalScreen[Optional[str]]):
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="modal-dialog"):
-            yield Label("🔒 Đặt Mật Khẩu Bảo Vệ Ghi Chú", classes="dialog-title")
-            yield Static(f"Ghi chú: [bold cyan]{self.note_title}[/bold cyan]")
-            yield Label("Mật khẩu mới:")
-            yield VietnameseInput(password=True, placeholder="Nhập mật khẩu...", id="input-lock-pass1")
-            yield Label("Xác nhận mật khẩu:")
-            yield VietnameseInput(password=True, placeholder="Nhập lại mật khẩu...", id="input-lock-pass2")
+            yield Label("🔒 Protect Note", classes="dialog-title")
+            yield Static(f"Note: [bold cyan]{escape(self.note_title)}[/bold cyan]")
+            yield Label("New password:")
+            yield VietnameseInput(password=True, placeholder="Enter password...", id="input-lock-pass1")
+            yield Label("Confirm password:")
+            yield VietnameseInput(password=True, placeholder="Repeat password...", id="input-lock-pass2")
             yield Static("", id="lock-error-msg", classes="error-msg")
             with Horizontal(classes="modal-buttons"):
                 yield Button("Cancel", id="btn-cancel", variant="default")
-                yield Button("Khóa ghi chú", id="btn-confirm-lock", variant="primary")
+                yield Button("Protect note", id="btn-confirm-lock", variant="primary")
 
     def on_mount(self) -> None:
         self.query_one("#input-lock-pass1", VietnameseInput).focus()
@@ -181,10 +192,10 @@ class LockNoteModal(ModalScreen[Optional[str]]):
         p1 = self.query_one("#input-lock-pass1", VietnameseInput).value
         p2 = self.query_one("#input-lock-pass2", VietnameseInput).value
         if not p1:
-            self.query_one("#lock-error-msg", Static).update("[bold red]Mật khẩu không được để trống![/bold red]")
+            self.query_one("#lock-error-msg", Static).update("[bold red]Password must not be empty.[/bold red]")
             return
         if p1 != p2:
-            self.query_one("#lock-error-msg", Static).update("[bold red]Mật khẩu xác nhận không khớp![/bold red]")
+            self.query_one("#lock-error-msg", Static).update("[bold red]Passwords do not match.[/bold red]")
             return
         self.dismiss(p1)
 
@@ -194,9 +205,9 @@ class ManageLockModal(ModalScreen[Optional[str]]):
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", priority=True),
-        Binding("1", "choose_change_password", "Đổi mật khẩu"),
-        Binding("2", "choose_remove_lock", "Bỏ khóa"),
-        Binding("3", "choose_relock", "Khóa lại ngay"),
+        Binding("1", "choose_change_password", "Change password"),
+        Binding("2", "choose_remove_lock", "Remove protection"),
+        Binding("3", "choose_relock", "Relock"),
     ]
 
     def __init__(self, note_title: str):
@@ -205,13 +216,13 @@ class ManageLockModal(ModalScreen[Optional[str]]):
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="modal-dialog"):
-            yield Label("🔐 Quản Lý Khóa Ghi Chú", classes="dialog-title")
-            yield Static(f"Ghi chú: [bold cyan]{self.note_title}[/bold cyan]")
-            yield Static("[dim]Chọn thao tác bảo mật bạn muốn thực hiện:[/dim]\n")
+            yield Label("🔐 Manage Protection", classes="dialog-title")
+            yield Static(f"Note: [bold cyan]{escape(self.note_title)}[/bold cyan]")
+            yield Static("[dim]Choose a security action:[/dim]\n")
             with Vertical(id="manage-lock-options"):
-                yield Button("🔑 1. Đổi mật khẩu mới", id="btn-opt-change-pass", variant="primary")
-                yield Button("🔓 2. Bỏ khóa (Gỡ mật khẩu vĩnh viễn)", id="btn-opt-remove-lock", variant="warning")
-                yield Button("🔒 3. Khóa lại ngay lập tức", id="btn-opt-relock", variant="default")
+                yield Button("🔑 1. Change password", id="btn-opt-change-pass", variant="primary")
+                yield Button("🔓 2. Remove password protection", id="btn-opt-remove-lock", variant="warning")
+                yield Button("🔒 3. Relock now", id="btn-opt-relock", variant="default")
             with Horizontal(classes="modal-buttons"):
                 yield Button("Cancel", id="btn-cancel", variant="default")
 
@@ -251,16 +262,16 @@ class ChangePasswordModal(ModalScreen[Optional[str]]):
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="modal-dialog"):
-            yield Label("🔑 Đổi Mật Khẩu Ghi Chú", classes="dialog-title")
-            yield Static(f"Ghi chú: [bold cyan]{self.note_title}[/bold cyan]")
-            yield Label("Mật khẩu mới:")
-            yield VietnameseInput(password=True, placeholder="Nhập mật khẩu mới...", id="input-new-pass1")
-            yield Label("Xác nhận mật khẩu mới:")
-            yield VietnameseInput(password=True, placeholder="Nhập lại mật khẩu mới...", id="input-new-pass2")
+            yield Label("🔑 Change Password", classes="dialog-title")
+            yield Static(f"Note: [bold cyan]{escape(self.note_title)}[/bold cyan]")
+            yield Label("New password:")
+            yield VietnameseInput(password=True, placeholder="Enter new password...", id="input-new-pass1")
+            yield Label("Confirm new password:")
+            yield VietnameseInput(password=True, placeholder="Repeat new password...", id="input-new-pass2")
             yield Static("", id="change-error-msg", classes="error-msg")
             with Horizontal(classes="modal-buttons"):
                 yield Button("Cancel", id="btn-cancel", variant="default")
-                yield Button("Lưu mật khẩu mới", id="btn-confirm-change", variant="primary")
+                yield Button("Save password", id="btn-confirm-change", variant="primary")
 
     def on_mount(self) -> None:
         self.query_one("#input-new-pass1", VietnameseInput).focus()
@@ -284,10 +295,10 @@ class ChangePasswordModal(ModalScreen[Optional[str]]):
         p1 = self.query_one("#input-new-pass1", VietnameseInput).value
         p2 = self.query_one("#input-new-pass2", VietnameseInput).value
         if not p1:
-            self.query_one("#change-error-msg", Static).update("[bold red]Mật khẩu mới không được để trống![/bold red]")
+            self.query_one("#change-error-msg", Static).update("[bold red]Password must not be empty.[/bold red]")
             return
         if p1 != p2:
-            self.query_one("#change-error-msg", Static).update("[bold red]Mật khẩu xác nhận không khớp![/bold red]")
+            self.query_one("#change-error-msg", Static).update("[bold red]Passwords do not match.[/bold red]")
             return
         self.dismiss(p1)
 
@@ -305,14 +316,14 @@ class ConfirmRemoveLockModal(ModalScreen[bool]):
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="modal-dialog"):
-            yield Label("Gỡ Bỏ Mật Khẩu Bảo Vệ?", classes="dialog-title")
+            yield Label("Remove Password Protection?", classes="dialog-title")
             yield Static(
-                f"Bạn có chắc muốn gỡ bỏ mật khẩu bảo vệ cho ghi chú [bold cyan]'{self.note_title}'[/bold cyan]?\n\n"
-                "[yellow]Sau khi gỡ bỏ, ghi chú sẽ trở về dạng văn bản thường và ai cũng có thể đọc được.[/yellow]"
+                f"Remove password protection from [bold cyan]'{escape(self.note_title)}'[/bold cyan]?\n\n"
+                "[yellow]The note will be stored as readable plain text.[/yellow]"
             )
             with Horizontal(classes="modal-buttons"):
-                yield Button("Hủy", id="btn-cancel", variant="default")
-                yield Button("Gỡ bỏ khóa", id="btn-confirm-remove", variant="warning")
+                yield Button("Cancel", id="btn-cancel", variant="default")
+                yield Button("Remove protection", id="btn-confirm-remove", variant="warning")
 
     def on_mount(self) -> None:
         self.query_one("#btn-cancel", Button).focus()
@@ -342,7 +353,7 @@ class ConfirmDeleteModal(ModalScreen[bool]):
     def compose(self) -> ComposeResult:
         with Vertical(classes="modal-dialog"):
             yield Label("Delete Note", classes="dialog-title")
-            yield Static(f"Are you sure you want to permanently delete:\n[bold red]{self.note_title}[/bold red]?")
+            yield Static(f"Are you sure you want to permanently delete:\n[bold red]{escape(self.note_title)}[/bold red]?")
             with Horizontal(classes="modal-buttons"):
                 yield Button("Cancel", id="btn-cancel", variant="default")
                 yield Button("Delete", id="btn-delete", variant="error")
@@ -390,7 +401,11 @@ class HelpModal(ModalScreen[None]):
         ("[bold cyan]d[/bold cyan]", "Delete current note"),
         ("[bold cyan]/[/bold cyan]", "Focus search bar"),
         ("[bold cyan]?[/bold cyan]", "Show this help screen"),
-        ("[bold cyan]q / ctrl+q[/bold cyan]", "Quit application"),
+        ("[bold cyan]ctrl+q[/bold cyan]", "Save and quit"),
+        ("[bold cyan]ctrl+n[/bold cyan]", "Quick capture into Inbox"),
+        ("[bold cyan]ctrl+o[/bold cyan]", "Toggle folders and tags navigation"),
+        ("[bold cyan]ctrl+l[/bold cyan]", "Toggle notes list"),
+        ("[bold cyan]More[/bold cyan]", "Tags, pin, archive, move, lock and rename"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -444,22 +459,22 @@ class ColorFormatModal(ModalScreen[Optional[str]]):
     }
 
     OPTIONS = [
-        ("1", "btn-c-1", "🔴 Chữ Đỏ (Red)", "1"),
-        ("2", "btn-c-2", "🟢 Chữ Xanh lá (Green)", "2"),
-        ("3", "btn-c-3", "🟡 Chữ Vàng (Yellow)", "3"),
-        ("4", "btn-c-4", "🔵 Chữ Xanh dương (Blue)", "4"),
-        ("5", "btn-c-5", "🟣 Chữ Tím (Purple)", "5"),
-        ("6", "btn-c-6", "🟠 Chữ Cam (Orange)", "6"),
-        ("7", "btn-c-7", "🔷 Chữ Xanh ngọc (Cyan)", "7"),
-        ("8", "btn-c-8", "🌸 Chữ Hồng (Pink)", "8"),
-        ("9", "btn-c-9", "💡 Khung Ghi chú (Tip Box)", "9"),
-        ("0", "btn-c-0", "⚠️ Khung Cảnh báo (Warning Box)", "0"),
+        ("1", "btn-c-1", "🔴 Red", "1"),
+        ("2", "btn-c-2", "🟢 Green", "2"),
+        ("3", "btn-c-3", "🟡 Yellow", "3"),
+        ("4", "btn-c-4", "🔵 Blue", "4"),
+        ("5", "btn-c-5", "🟣 Purple", "5"),
+        ("6", "btn-c-6", "🟠 Orange", "6"),
+        ("7", "btn-c-7", "🔷 Cyan", "7"),
+        ("8", "btn-c-8", "🌸 Pink", "8"),
+        ("9", "btn-c-9", "💡 Tip callout", "9"),
+        ("0", "btn-c-0", "⚠️ Warning callout", "0"),
     ]
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="modal-dialog"):
-            yield Label("🎨 Chọn Màu Chữ & Định Dạng", classes="dialog-title")
-            yield Static("[dim]Bấm số [bold cyan]1-8[/bold cyan] đổi màu chữ hoặc [bold cyan]9, 0[/bold cyan] đóng khung:[/dim]\n")
+            yield Label("🎨 Text Colors & Formatting", classes="dialog-title")
+            yield Static("[dim]Press [bold cyan]1-8[/bold cyan] for text colors or [bold cyan]9, 0[/bold cyan] for callouts:[/dim]\n")
             for key, btn_id, label, opt_key in self.OPTIONS:
                 with Horizontal(classes="color-choice-row"):
                     yield Static(f"[bold cyan][{key}][/bold cyan]", classes="key-badge-small")
@@ -489,3 +504,200 @@ class ColorFormatModal(ModalScreen[Optional[str]]):
     def action_select_opt_9(self) -> None: self.dismiss(self.TEMPLATES["9"])
     def action_select_opt_0(self) -> None: self.dismiss(self.TEMPLATES["0"])
 
+
+
+class TextPromptModal(ModalScreen[str | None]):
+    BINDINGS = [Binding('escape', 'cancel', 'Cancel', priority=True)]
+
+    def __init__(self, title: str, value: str = '', hint: str = '', suggestions=None):
+        super().__init__()
+        self.prompt_title, self.value, self.hint = title, value, hint
+        self.suggestions = suggestions
+
+    def compose(self):
+        with Vertical(classes='modal-dialog'):
+            yield Label(self.prompt_title, classes='dialog-title')
+            yield Static(self.hint, markup=False)
+            yield VietnameseInput(value=self.value, id='prompt-value')
+            yield Static('', id='prompt-suggestions', markup=False)
+            with Horizontal(classes='modal-buttons'):
+                yield Button('Cancel', id='prompt-cancel')
+                yield Button('Apply', id='prompt-apply', variant='primary')
+
+    def on_mount(self):
+        self.query_one('#prompt-value', Input).focus()
+        self.update_suggestions(self.value)
+
+    def update_suggestions(self, value):
+        if self.suggestions:
+            self.query_one('#prompt-suggestions', Static).update(self.suggestions(value))
+
+    def on_input_changed(self, event: Input.Changed):
+        self.update_suggestions(event.value)
+
+    def on_input_submitted(self):
+        self.dismiss(self.query_one('#prompt-value', Input).value)
+
+    def on_button_pressed(self, event: Button.Pressed):
+        self.dismiss(self.query_one('#prompt-value', Input).value if event.button.id == 'prompt-apply' else None)
+
+    def action_cancel(self):
+        self.dismiss(None)
+
+
+class ActionMenuModal(ModalScreen[str | None]):
+    BINDINGS = [Binding('escape', 'cancel', 'Cancel', priority=True)]
+
+    def __init__(self, title, actions):
+        super().__init__()
+        self.menu_title, self.actions = title, actions
+
+    def compose(self):
+        with Vertical(classes='modal-dialog'):
+            yield Label(self.menu_title, classes='dialog-title')
+            for action, label in self.actions:
+                yield Button(label, id='menu-' + action, classes='menu-action')
+            yield Button('Cancel', id='menu-cancel', classes='menu-action')
+
+    def on_button_pressed(self, event: Button.Pressed):
+        event.stop()
+        action = event.button.id.removeprefix('menu-')
+        self.dismiss(None if action == 'cancel' else action)
+
+    def action_cancel(self):
+        self.dismiss(None)
+
+
+class ConflictModal(ActionMenuModal):
+    def __init__(self):
+        super().__init__('File changed outside Noted', [
+            ('reload', 'Reload disk version (discard draft)'),
+            ('overwrite', 'Overwrite with current draft')])
+
+
+class FolderPickerModal(ModalScreen[Path | None]):
+    BINDINGS = [Binding('escape', 'cancel', 'Cancel', priority=True)]
+
+    def __init__(self, storage, current):
+        super().__init__()
+        self.storage, self.current = storage, current
+        self.destination = storage.config.notes_subdir.resolve()
+
+    def compose(self):
+        with Vertical(classes='modal-dialog'):
+            yield Label('Move note', classes='dialog-title')
+            yield Static(f'Current: {self.current}', markup=False)
+            yield VietnameseInput(placeholder='Find folder: Work/Project', id='folder-search')
+            yield Tree('notes/', self.destination, id='folder-picker-tree')
+            yield VietnameseInput(placeholder='New folder name inside selection', id='folder-new-name')
+            yield Static('Destination: notes/', id='folder-destination', markup=False)
+            with Horizontal(classes='modal-buttons'):
+                yield Button('New folder', id='folder-new')
+                yield Button('Cancel', id='folder-cancel')
+                yield Button('Move', id='folder-move', variant='primary')
+
+    def on_mount(self):
+        tree = self.query_one(Tree)
+        self.populate(tree.root)
+        tree.root.expand()
+
+    def populate(self, node):
+        if node.children:
+            return
+        for path in self.storage.child_folders(node.data):
+            node.add(Text(path.name), path, allow_expand=True)
+
+    def on_tree_node_expanded(self, event: Tree.NodeExpanded):
+        self.populate(event.node)
+
+    def on_tree_node_selected(self, event: Tree.NodeSelected):
+        self.destination = event.node.data
+        self.query_one('#folder-destination', Static).update('Destination: ' + str(self.destination.relative_to(self.storage.config.notes_subdir.resolve())))
+
+    def on_input_changed(self, event: Input.Changed):
+        if event.input.id != 'folder-search':
+            return
+        if getattr(self, '_folder_search_timer', None):
+            self._folder_search_timer.stop()
+        self._folder_search_timer = self.set_timer(.15, self.search_folders)
+
+    def search_folders(self):
+        query = self.query_one('#folder-search', Input).value.strip()
+        tree = self.query_one('#folder-picker-tree', Tree)
+        tree.clear()
+        tree.root.data = self.storage.config.notes_subdir.resolve()
+        if query:
+            for path in self.storage.find_folders(query):
+                tree.root.add_leaf(Text(str(path.relative_to(tree.root.data))), path)
+        else:
+            self.populate(tree.root)
+        tree.root.expand()
+
+    def on_button_pressed(self, event: Button.Pressed):
+        event.stop()
+        if event.button.id == 'folder-move':
+            self.dismiss(self.destination)
+        elif event.button.id == 'folder-cancel':
+            self.dismiss(None)
+        elif event.button.id == 'folder-new':
+            try:
+                name = self.query_one('#folder-new-name', Input).value.strip()
+                if not name:
+                    raise ValueError('Enter a folder name.')
+                self.destination = self.storage.create_folder(self.destination / name)
+                self.query_one('#folder-destination', Static).update('Destination: ' + str(self.destination))
+            except (OSError, ValueError) as exc:
+                self.notify(str(exc), severity='error')
+
+    def action_cancel(self):
+        self.dismiss(None)
+
+
+class FilterNotesModal(ModalScreen[tuple[str | None, list[str]] | None]):
+    BINDINGS = [Binding('escape', 'cancel', 'Cancel', priority=True)]
+
+    def __init__(self, tags, note_type):
+        super().__init__()
+        self.tags, self.note_type = tags, note_type
+
+    def compose(self):
+        from textual.widgets import Select
+        with Vertical(classes='modal-dialog'):
+            yield Label('Filter notes', classes='dialog-title')
+            yield Label('Type')
+            yield Select([('All types', 'all'), ('Notes', 'note'), ('Journals', 'journal')],
+                         value=self.note_type or 'all', allow_blank=False, id='filter-type')
+            yield Label('Tags · match all, comma-separated')
+            yield VietnameseInput(value=', '.join(self.tags), id='filter-tags')
+            yield Static('', id='filter-suggestions', markup=False)
+            with Horizontal(classes='modal-buttons'):
+                yield Button('Clear', id='filter-clear')
+                yield Button('Cancel', id='filter-cancel')
+                yield Button('Apply', id='filter-apply', variant='primary')
+
+    def on_input_changed(self, event: Input.Changed):
+        if event.input.id == 'filter-tags':
+            tags = self.app.indexer.list_tags(query=event.value.split(',')[-1].strip(), limit=8)
+            self.query_one('#filter-suggestions', Static).update('Suggestions: ' + ', '.join(t for t, _ in tags))
+
+    def submit(self):
+        from textual.widgets import Select
+        from noted.models import normalize_tags
+        kind = self.query_one('#filter-type', Select).value
+        self.dismiss((None if kind == 'all' else kind,
+                      normalize_tags(self.query_one('#filter-tags', Input).value.split(','))))
+
+    def on_input_submitted(self):
+        self.submit()
+
+    def on_button_pressed(self, event: Button.Pressed):
+        event.stop()
+        if event.button.id == 'filter-clear':
+            self.dismiss((None, []))
+        elif event.button.id == 'filter-apply':
+            self.submit()
+        else:
+            self.dismiss(None)
+
+    def action_cancel(self):
+        self.dismiss(None)

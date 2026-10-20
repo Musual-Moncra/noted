@@ -1,210 +1,154 @@
+import os
 import json
 import re
+import sqlite3
 from pathlib import Path
-from typing import Any
 from noted.db import DatabaseManager
-from noted.models import Note, NoteSummary, SearchResult
+from noted.models import Note, NoteSummary, SearchResult, normalize_tags
 from noted.storage import StorageManager
 
-class NoteIndexer:
-    """Indexes notes into SQLite3 and provides FTS5 full-text search & tag queries."""
 
+class NoteIndexer:
     def __init__(self, db: DatabaseManager, storage: StorageManager):
-        self.db = db
-        self.storage = storage
+        self.db, self.storage = db, storage
+        self.sync_errors: list[str] = []
+
+    def _index(self, conn, note: Note) -> None:
+        existing = conn.execute("SELECT filepath FROM notes WHERE id=?", (note.id,)).fetchone()
+        if existing and Path(existing['filepath']) != note.filepath.resolve() and Path(existing['filepath']).exists():
+            raise ValueError("Duplicate note ID in different files.")
+        folder = str(note.filepath.parent.resolve())
+        tags = normalize_tags(note.tags)
+        body = "[🔒 Encrypted note]" if note.encrypted else note.body
+        excerpt = "Locked note" if note.encrypted else " ".join(note.body[:512].split())[:120]
+        conn.execute("""INSERT INTO notes
+            (id, filepath, title, date, type, tags, mtime_ns, size_bytes, encrypted, pinned, archived, folder, excerpt)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET
+            filepath=excluded.filepath, title=excluded.title, date=excluded.date, type=excluded.type,
+            tags=excluded.tags, mtime_ns=excluded.mtime_ns, size_bytes=excluded.size_bytes,
+            encrypted=excluded.encrypted, pinned=excluded.pinned, archived=excluded.archived,
+            folder=excluded.folder, excerpt=excluded.excerpt""",
+            (note.id, str(note.filepath.resolve()), note.title, note.date, note.note_type,
+             json.dumps(tags), note.mtime_ns, note.size_bytes, int(note.encrypted),
+             int(note.pinned), int(note.archived), folder, excerpt))
+        conn.execute("DELETE FROM note_tags WHERE note_id=?", (note.id,))
+        conn.executemany("INSERT INTO note_tags VALUES (?,?)", ((note.id, t) for t in tags))
+        conn.execute("DELETE FROM notes_fts WHERE id=?", (note.id,))
+        conn.execute("INSERT INTO notes_fts(id,title,body,tags) VALUES (?,?,?,?)",
+                     (note.id, note.title, body, " ".join(tags)))
 
     def index_note(self, note: Note) -> None:
-        """Indexes or updates a single note in SQLite and FTS5."""
-        if not note.filepath or not note.filepath.is_file():
-            return
+        if note.filepath and note.filepath.is_file():
+            with self.db.get_connection() as conn:
+                self._index(conn, note)
 
-        mtime_ns = note.filepath.stat().st_mtime_ns
-        size_bytes = note.filepath.stat().st_size
-        tags_json = json.dumps(note.tags)
-        tags_str = " ".join(note.tags)
-
-        is_encrypted = 1 if note.encrypted else 0
-        fts_body = "[🔒 Encrypted note]" if note.encrypted else note.body
-
-        with self.db.get_connection() as conn:
-            conn.execute(
-                """
-                INSERT INTO notes (id, filepath, title, date, type, tags, mtime_ns, size_bytes, encrypted)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT(id) DO UPDATE SET
-                    filepath = excluded.filepath,
-                    title = excluded.title,
-                    date = excluded.date,
-                    type = excluded.type,
-                    tags = excluded.tags,
-                    mtime_ns = excluded.mtime_ns,
-                    size_bytes = excluded.size_bytes,
-                    encrypted = excluded.encrypted;
-                """,
-                (
-                    note.id,
-                    str(note.filepath.resolve()),
-                    note.title,
-                    note.date,
-                    note.note_type,
-                    tags_json,
-                    mtime_ns,
-                    size_bytes,
-                    is_encrypted,
-                ),
-            )
-
-            # Update tags
-            conn.execute("DELETE FROM note_tags WHERE note_id = ?", (note.id,))
-            for tag in note.tags:
-                conn.execute(
-                    "INSERT OR IGNORE INTO note_tags (note_id, tag) VALUES (?, ?)",
-                    (note.id, tag.strip().lower()),
-                )
-
-            # Update FTS5 virtual table
-            conn.execute("DELETE FROM notes_fts WHERE id = ?", (note.id,))
-            conn.execute(
-                "INSERT INTO notes_fts (id, title, body, tags) VALUES (?, ?, ?, ?)",
-                (note.id, note.title, fts_body, tags_str),
-            )
+    @staticmethod
+    def _remove(conn, note_id):
+        conn.execute("DELETE FROM notes WHERE id=?", (note_id,))
+        conn.execute("DELETE FROM notes_fts WHERE id=?", (note_id,))
 
     def remove_note(self, note_id: str) -> None:
-        """Removes a note from the index."""
         with self.db.get_connection() as conn:
-            conn.execute("DELETE FROM notes WHERE id = ?", (note_id,))
-            conn.execute("DELETE FROM note_tags WHERE note_id = ?", (note_id,))
-            conn.execute("DELETE FROM notes_fts WHERE id = ?", (note_id,))
+            self._remove(conn, note_id)
 
-    def sync_all(self) -> int:
-        """Reconciles filesystem notes with SQLite database incrementally.
-        
-        Returns the count of notes updated or added.
-        """
-        disk_files = {p.resolve(): p for p in self.storage.list_note_files()}
-        updated_count = 0
-
+    def sync_all(self, *, cancelled=None) -> int:
+        """Stream filesystem entries; keep at most one body and 200 records resident."""
+        updated = 0
+        self.sync_errors = []
         with self.db.get_connection() as conn:
-            rows = conn.execute("SELECT id, filepath, mtime_ns FROM notes").fetchall()
-            db_records = {Path(row["filepath"]).resolve(): (row["id"], row["mtime_ns"]) for row in rows}
-
-        # 1. Prune deleted files
-        for db_path, (nid, _) in db_records.items():
-            if db_path not in disk_files:
-                self.remove_note(nid)
-
-        # 2. Add or update changed files
-        for disk_path, p in disk_files.items():
-            st = p.stat()
-            current_mtime = st.st_mtime_ns
-            if disk_path not in db_records or db_records[disk_path][1] != current_mtime:
-                note = self.storage.read_note(p)
-                self.index_note(note)
-                updated_count += 1
-
-        return updated_count
+            for path in self.storage.iter_note_files():
+                if cancelled is not None and cancelled():
+                    return updated
+                try:
+                    stat = path.stat()
+                    row = conn.execute("SELECT mtime_ns,size_bytes,folder FROM notes WHERE filepath=?",
+                                       (str(path.resolve()),)).fetchone()
+                    if row is None or row['mtime_ns'] != stat.st_mtime_ns or row['size_bytes'] != stat.st_size or not row['folder']:
+                        self._index(conn, self.storage.read_note(path))
+                        updated += 1
+                        if updated % 200 == 0:
+                            conn.commit()
+                except (OSError, ValueError, sqlite3.Error) as exc:
+                    # Bound diagnostics too; never include note contents.
+                    if len(self.sync_errors) < 20:
+                        self.sync_errors.append(f"{path.name}: {type(exc).__name__}")
+            cursor = conn.execute("SELECT id,filepath FROM notes")
+            while rows := cursor.fetchmany(200):
+                if cancelled is not None and cancelled():
+                    return updated
+                for row in rows:
+                    path = Path(row['filepath'])
+                    if not path.is_file() or path.is_symlink():
+                        self._remove(conn, row['id'])
+                conn.commit()
+        return updated
 
     @staticmethod
     def sanitize_fts_query(query: str) -> str:
-        """Sanitizes user input for SQLite FTS5 query syntax."""
-        tokens = re.findall(r"\w+", query)
-        if not tokens:
-            return ""
-        # Prefix match each token safely
-        return " ".join(f'"{token}"*' for token in tokens)
+        return " ".join(f'"{token}"*' for token in re.findall(r"\w+", query))
 
-    def search(self, query: str, limit: int = 20) -> list[SearchResult]:
-        """Performs full-text search across titles, bodies, and tags."""
-        fts_query = self.sanitize_fts_query(query)
-        if not fts_query:
-            return []
+    @staticmethod
+    def _summary(row) -> NoteSummary:
+        return NoteSummary(id=row['id'], title=row['title'], date=row['date'],
+                           note_type=row['type'], tags=json.loads(row['tags']),
+                           filepath=Path(row['filepath']), encrypted=bool(row['encrypted']),
+                           pinned=bool(row['pinned']), archived=bool(row['archived']),
+                           excerpt=('Locked note' if row['encrypted'] else row['search_excerpt'] or row['excerpt']) if 'search_excerpt' in row.keys() else row['excerpt'], mtime_ns=row['mtime_ns'])
 
-        results: list[SearchResult] = []
-        with self.db.get_connection() as conn:
-            try:
-                rows = conn.execute(
-                    """
-                    SELECT fts.id,
-                           snippet(notes_fts, 2, '[[HIGHLIGHT]]', '[[/HIGHLIGHT]]', '...', 15) as snip,
-                           n.filepath, n.title, n.date, n.type, n.tags, n.encrypted
-                    FROM notes_fts fts
-                    JOIN notes n ON n.id = fts.id
-                    WHERE notes_fts MATCH ?
-                    ORDER BY bm25(notes_fts)
-                    LIMIT ?;
-                    """,
-                    (fts_query, limit),
-                ).fetchall()
-
-                for row in rows:
-                    tags = json.loads(row["tags"]) if row["tags"] else []
-                    is_enc = bool(row["encrypted"]) if "encrypted" in row.keys() else False
-                    summary = NoteSummary(
-                        id=row["id"],
-                        title=row["title"],
-                        date=row["date"],
-                        note_type=row["type"],
-                        tags=tags,
-                        filepath=Path(row["filepath"]),
-                        encrypted=is_enc,
-                    )
-                    raw_snippet = row["snip"] or ""
-                    if is_enc:
-                        raw_snippet = "[🔒 Encrypted note]"
-                    elif not raw_snippet:
-                        raw_snippet = f"Matched in {row['title']}"
-                    results.append(SearchResult(note=summary, snippet=raw_snippet))
-            except Exception:
-                return []
-
-        return results
-
-    def list_notes(
-        self,
-        tag: str | None = None,
-        note_type: str | None = None,
-        limit: int = 50,
-    ) -> list[NoteSummary]:
-        """Lists notes matching filters, sorted by date descending."""
-        query = "SELECT n.id, n.filepath, n.title, n.date, n.type, n.tags, n.encrypted FROM notes n"
-        params: list[Any] = []
-        conditions: list[str] = []
-
-        if tag:
-            query += " JOIN note_tags t ON n.id = t.note_id"
-            conditions.append("t.tag = ?")
-            params.append(tag.strip().lower())
-
+    def _where(self, *, tag=None, tags=None, note_type=None, folder=None,
+               recursive=True, archived=False, pinned=False, query=""):
+        conditions, params = ["n.archived=?"], [int(archived)]
+        if pinned:
+            conditions.append("n.pinned=1")
         if note_type:
-            conditions.append("n.type = ?")
+            conditions.append("n.type=?")
             params.append(note_type)
+        for value in normalize_tags(([tag] if tag else []) + (tags or [])):
+            conditions.append("EXISTS (SELECT 1 FROM note_tags t WHERE t.note_id=n.id AND t.tag=?)")
+            params.append(value)
+        if folder is not None:
+            parent = str(self.storage.folder_path(folder))
+            conditions.append("(n.folder=? OR substr(n.folder,1,?)=?)" if recursive else "n.folder=?")
+            params.extend([parent, len(parent + os.sep), parent + os.sep] if recursive else [parent])
+        if query:
+            fts = self.sanitize_fts_query(query)
+            conditions.append("n.id IN (SELECT id FROM notes_fts WHERE notes_fts MATCH ?)")
+            params.append(fts or '""')
+        return " AND ".join(conditions), params
 
-        if conditions:
-            query += " WHERE " + " AND ".join(conditions)
-
-        query += " ORDER BY n.date DESC, n.mtime_ns DESC LIMIT ?"
-        params.append(limit)
-
-        results: list[NoteSummary] = []
+    def list_notes(self, tag=None, note_type=None, limit=50, *, offset=0, tags=None,
+                   folder=None, recursive=True, archived=False, pinned=False,
+                   query="", sort="updated") -> list[NoteSummary]:
+        where, params = self._where(tag=tag, tags=tags, note_type=note_type, folder=folder,
+                                    recursive=recursive, archived=archived, pinned=pinned, query="")
+        order = {"updated": "n.mtime_ns DESC", "created": "n.date DESC", "title": "n.title COLLATE NOCASE"}.get(sort, "n.mtime_ns DESC")
+        params.extend([max(1, min(limit, 1000)), max(0, offset)])
+        if query:
+            sql = f"""SELECT n.*, substr(snippet(notes_fts,2,'[[HIGHLIGHT]]','[[/HIGHLIGHT]]','…',12),1,200) AS search_excerpt
+                      FROM notes_fts JOIN notes n ON n.id=notes_fts.id
+                      WHERE notes_fts MATCH ? AND {where} ORDER BY bm25(notes_fts),n.id LIMIT ? OFFSET ?"""
+            params.insert(0, self.sanitize_fts_query(query) or '""')
+        else:
+            sql = f"SELECT n.* FROM notes n WHERE {where} ORDER BY n.pinned DESC,{order},n.id LIMIT ? OFFSET ?"
         with self.db.get_connection() as conn:
-            rows = conn.execute(query, params).fetchall()
-            for row in rows:
-                tags = json.loads(row["tags"]) if row["tags"] else []
-                is_enc = bool(row["encrypted"]) if "encrypted" in row.keys() else False
-                results.append(
-                    NoteSummary(
-                        id=row["id"],
-                        title=row["title"],
-                        date=row["date"],
-                        note_type=row["type"],
-                        tags=tags,
-                        filepath=Path(row["filepath"]),
-                        encrypted=is_enc,
-                    )
-                )
+            return [self._summary(row) for row in conn.execute(sql, params)]
 
-        return results
+    def count_notes(self, **filters) -> int:
+        where, params = self._where(**filters)
+        with self.db.get_connection() as conn:
+            return conn.execute(f"SELECT count(*) FROM notes n WHERE {where}", params).fetchone()[0]
 
+    def list_tags(self, *, query="", limit=100, offset=0) -> list[tuple[str, int]]:
+        with self.db.get_connection() as conn:
+            return [(r[0], r[1]) for r in conn.execute("""SELECT t.tag,count(*) FROM note_tags t
+                JOIN notes n ON n.id=t.note_id WHERE n.archived=0 AND instr(t.tag,?)>0
+                GROUP BY t.tag ORDER BY t.tag LIMIT ? OFFSET ?""", (query.lower(), limit, offset))]
+
+    def search(self, query: str, limit=20, **filters) -> list[SearchResult]:
+        if not self.sanitize_fts_query(query):
+            return []
+        notes = self.list_notes(query=query, limit=limit, **filters)
+        return [SearchResult(n, "[🔒 Encrypted note]" if n.encrypted else n.excerpt or f"Matched in {n.title}") for n in notes]
 
     def get_note_by_id_or_date(self, identifier: str) -> Note | None:
         """Finds a note by exact ID or journal date (YYYY-MM-DD), returning the loaded Note."""
@@ -246,7 +190,7 @@ class NoteIndexer:
         if journal_p.is_file():
             return self.storage.read_note(journal_p)
 
-        for p in self.storage.list_note_files():
+        for p in self.storage.iter_note_files():
             if ident in p.name:
                 return self.storage.read_note(p)
 

@@ -1,174 +1,58 @@
-Screen {
-    background: #1a1b26;
-    color: #c0caf5;
-}
-
-Header {
-    background: #1f2335;
-    color: #7aa2f7;
-    text-style: bold;
-}
-
-Footer {
-    background: #1f2335;
-    color: #a9b1d6;
-}
-#main-container {
-    layout: horizontal;
-    height: 1fr;
-    background: #1a1b26;
-}
-
-#sidebar {
-    width: 32;
-    min-width: 26;
-    max-width: 36;
-    height: 1fr;
-    border-right: solid #292e42;
-    background: #1f2335;
-    padding: 0 1;
-}
-
-#search-input {
-    margin-top: 1;
-    margin-bottom: 1;
-    background: #24283b;
-    border: round #3b4261;
-    color: #c0caf5;
-}
-
-#search-input:focus {
-    border: round #7aa2f7;
-}
-
-#notes-list {
-    height: 1fr;
-    background: transparent;
-    scrollbar-size-vertical: 1;
-}
-
-.note-item-text {
-    padding: 0 1;
-}
-
-ListItem {
-    padding: 1 0;
-    background: transparent;
-    border-bottom: solid #292e42;
-}
-
-ListItem:hover {
-    background: #24283b;
-}
-
-ListItem.-selected {
-    background: #283456;
-    border-left: thick #7aa2f7;
-}
-
-#content-area {
-    width: 1fr;
-    height: 1fr;
-    background: #1a1b26;
-}
-
-#metadata-header {
-    height: 4;
-    border-bottom: solid #292e42;
-    padding: 0 1;
-    background: #1f2335;
-    layout: vertical;
-}
-
-#metadata-info {
-    width: 100%;
-    height: 1;
-    content-align: left middle;
-}
-
-#mode-button-group {
-    width: 100%;
-    height: 1;
-    margin-top: 1;
-    layout: horizontal;
-    overflow-x: auto;
-    scrollbar-size-horizontal: 0;
-}
-
-.mode-btn {
-    min-width: 7;
-    height: 1;
-    padding: 0 1;
-    margin-right: 1;
-    border: none;
-    background: #24283b;
-    color: #7982a9;
-}
-
-.mode-btn:hover {
-    background: #3b4261;
-    color: #c0caf5;
-}
-
-.mode-btn.-active {
-    background: #7aa2f7;
-    color: #15161e;
-    text-style: bold;
-}
-
-#main-workspace {
-    layout: horizontal;
-    height: 1fr;
-    width: 1fr;
-    background: #1a1b26;
-}
-
-#view-container {
-    height: 1fr;
-    width: 1fr;
-    padding: 1 2;
-    overflow-y: auto;
-    background: #1a1b26;
-}
-
-#edit-container {
-    height: 1fr;
-    width: 1fr;
-    padding: 0;
-    background: #1a1b26;
-}
-
-#formatting-toolbar {
-    height: 3;
-    background: #1f2335;
-    border-bottom: solid #292e42;
-    padding: 0 1;
-    align-vertical: middle;
-    overflow-x: auto;
-    scrollbar-size-horizontal: 0;
-}
-
-.fmt-btn {
-    min-width: 4;
-    height: 1;
-    padding: 0 1;
-    margin-right: 1;
-    border: none;
-    background: #24283b;
-    color: #a9b1d6;
-}
-
-.fmt-btn:hover {
-    background: #7aa2f7;
-    color: #15161e;
-}
-
-#text-editor {
-    height: 1fr;
-    border: none;
-    background: #1a1b26;
-}
-
+Screen { background: $noted-base; color: $noted-text; }
+Header { height: 1; background: $noted-panel; color: $noted-accent; text-style: bold; }
+Footer { height: 1; background: $noted-panel; color: $noted-muted; }
+#main-container { height: 1fr; layout: horizontal; }
+#navigation { width: 24; background: $noted-panel; border-right: solid $noted-border; padding: 0 1; scrollbar-size: 1 1; }
+#sidebar { width: 32; background: $noted-panel; border-right: solid $noted-border; padding: 0 1; }
+Screen.-compact #sidebar { width: 28; }
+Screen.-narrow #sidebar { layer: overlay; dock: left; width: 30; }
+Screen.-compact #navigation { layer: overlay; dock: left; width: 26; }
+#content-area { width: 1fr; min-width: 16; }
+.section-label { height: 1; margin-top: 1; color: $noted-muted; text-style: bold; }
+.nav-btn { width: 1fr; height: 3; min-width: 1; text-align: left; padding: 0 1; }
+#nav-capture { width: 100%; min-width: 1; height: 3; margin-top: 1; }
+#folder-tree { height: auto; min-height: 3; max-height: 14; background: transparent; scrollbar-size: 1 1; }
+#tag-list { height: auto; max-height: 12; background: transparent; scrollbar-size: 1 1; }
+#tag-list ListItem { height: 1; padding: 0; }
+#main-container Input { background: $noted-surface; color: $noted-text; border: round $noted-border; }
+#main-container Input:focus { border: round $noted-accent; }
+#search-input { margin-top: 1; }
+#tag-search { height: 1; border: none; margin-top: 1; }
+#list-scope { height: 1; margin-bottom: 1; text-style: bold; color: $noted-text; }
+.compact-row { height: auto; min-height: 3; }
+.compact-btn { height: 3; min-width: 3; padding: 0 1; margin-right: 1; }
+#sort-order { width: 1fr; height: 1; margin: 1 1 0 0; }
+#filter-more { width: 10; }
+#recursive-filter { height: 1; padding: 0; border: none; background: transparent; margin-top: 1; }
+#active-filters { height: auto; max-height: 2; color: $noted-secondary; }
+#notes-list { height: 1fr; background: transparent; scrollbar-size: 1 1; }
+#notes-list ListItem { height: 6; padding: 1 1; border-bottom: solid $noted-border; }
+.note-item-text { height: 3; text-overflow: ellipsis; text-wrap: nowrap; }
+ListItem:hover { background: $noted-surface; }
+ListItem.-highlight { background: $noted-selected; }
+ListView:focus ListItem.-highlight { border-left: thick $noted-accent; }
+#list-empty { height: auto; color: $noted-muted; }
+#page-controls { height: 3; margin: 1 0; }
+#page-status { width: 1fr; height: 3; content-align: center middle; color: $noted-muted; }
+#metadata-header { height: 7; padding: 0 1; background: $noted-panel; border-bottom: solid $noted-border; }
+#metadata-info { width: 100%; height: 1; text-style: bold; text-overflow: ellipsis; text-wrap: nowrap; }
+#metadata-details { height: 1; color: $noted-muted; text-overflow: ellipsis; text-wrap: nowrap; }
+#mode-button-group { height: 3; margin-top: 1; }
+.mode-btn { height: 3; min-width: 5; padding: 0 1; margin-right: 1; }
+#save-status { height: 3; content-align: right middle; width: 1fr; min-width: 5; text-align: right; color: $noted-muted; }
+#resource-status { height: auto; max-height: 2; color: $noted-warning; padding: 0 1; }
+#main-workspace { height: 1fr; }
+#edit-container, #view-container { width: 1fr; height: 1fr; }
+#view-container { padding: 1 2; scrollbar-size: 1 1; }
+#formatting-toolbar { height: 3; padding: 0 1; background: $noted-panel; overflow-x: auto; scrollbar-size-horizontal: 0; }
+.fmt-btn { min-width: 3; height: 3; padding: 0 1; margin-right: 1; }
+#text-editor { height: 1fr; border: none; background: $noted-base; }
+#text-editor:focus { border-left: solid $noted-accent; }
+#empty-actions { height: auto; align: center middle; }
+#empty-actions Button { min-width: 12; }
+#main-container Button:disabled { opacity: 40%; }
+Screen.-motion Button { transition: background 100ms, color 100ms; }
+Screen.-motion Input { transition: border-top 100ms, border-bottom 100ms; }
 /* Modal styles */
 ModalScreen {
     align: center middle;
@@ -241,6 +125,8 @@ ModalScreen {
     color: #15161e;
 }
 
+
+.menu-action { height: 3; width: 100%; margin-bottom: 1; }
 #locked-note-card {
     width: 100%;
     max-width: 50;
@@ -272,12 +158,23 @@ ModalScreen {
     text-style: bold;
 }
 
-#manage-lock-options {
-    height: auto;
-    margin-bottom: 1;
-}
+#manage-lock-options { height: auto; margin-bottom: 1; }
+#manage-lock-options Button { width: 100%; margin-bottom: 1; }
+#folder-picker-tree { height: 12; background: $noted-surface; }
+#prompt-suggestions { color: $noted-secondary; margin-top: 1; }
+.error-msg { color: $noted-error; }
 
-#manage-lock-options Button {
-    width: 100%;
-    margin-bottom: 1;
-}
+MarkdownH1 { color: $noted-text; background: transparent; content-align: left middle; margin: 1 0; text-style: bold; }
+MarkdownH2 { color: $noted-accent; background: transparent; text-style: bold; margin: 1 0; }
+MarkdownH3 { color: $noted-secondary; text-style: bold; }
+
+.footer-btn { height: 1; min-width: 1; width: auto; border: none; padding: 0 1; margin: 0; color: $noted-muted; background: transparent; }
+
+/* New three-button dialogs still fit inside the original popup width. */
+#folder-new, #folder-cancel, #folder-move, #filter-clear, #filter-cancel, #filter-apply { min-width: 8; }
+
+/* Keep shortcut hints in their single-row footer. */
+.footer-btn:hover, .footer-btn.-active { border: none; }
+
+/* Focus keeps the raised button appearance without reversing the label. */
+Button:focus { text-style: bold; background-tint: transparent; }

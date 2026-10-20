@@ -32,7 +32,7 @@ def build_notes_table(notes: list[NoteSummary]) -> Table:
 
     for n in notes:
         table.add_row(
-            n.id,
+            n.id[-12:],
             f"📓 {n.note_type}" if n.note_type == "journal" else f"📝 {n.note_type}",
             format_date(n.date),
             n.title,
@@ -63,7 +63,7 @@ def build_search_table(results: list[SearchResult]) -> Table:
             .replace("\n", " ")
         )
         table.add_row(
-            r.note.id,
+            r.note.id[-12:],
             r.note.title,
             formatted_snip,
             format_tags(r.note.tags),

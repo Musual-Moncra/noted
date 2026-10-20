@@ -13,7 +13,7 @@ class DatabaseManager:
 
     @contextmanager
     def get_connection(self) -> Generator[sqlite3.Connection, None, None]:
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=10)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON;")
         conn.execute("PRAGMA journal_mode = WAL;")
@@ -59,6 +59,13 @@ class DatabaseManager:
             # Migration check for existing databases
             cursor = conn.execute("PRAGMA table_info(notes);")
             columns = [row["name"] for row in cursor.fetchall()]
-            if "encrypted" not in columns:
-                conn.execute("ALTER TABLE notes ADD COLUMN encrypted INTEGER DEFAULT 0;")
+            additions = {"encrypted": "INTEGER DEFAULT 0", "pinned": "INTEGER DEFAULT 0",
+                         "archived": "INTEGER DEFAULT 0", "folder": "TEXT DEFAULT ''",
+                         "excerpt": "TEXT DEFAULT ''"}
+            for name, declaration in additions.items():
+                if name not in columns:
+                    conn.execute(f"ALTER TABLE notes ADD COLUMN {name} {declaration}")
+            conn.execute("CREATE INDEX IF NOT EXISTS notes_browse ON notes(archived, pinned, mtime_ns)")
+            conn.execute("CREATE INDEX IF NOT EXISTS notes_folder ON notes(folder)")
+            conn.execute("CREATE INDEX IF NOT EXISTS tags_lookup ON note_tags(tag, note_id)")
 

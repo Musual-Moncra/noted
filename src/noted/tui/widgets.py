@@ -3,8 +3,10 @@ from textual import events
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical
 from textual.document._document import EditResult, Location
-from textual.widgets import Button, Input, ListItem, Static, TextArea
+from textual.widgets import Button, Input, ListItem, Static, TextArea, Footer
 from noted.models import Note, NoteSummary
+from rich.text import Text
+from noted.tui.theme import PALETTE
 
 class VietnameseTextArea(TextArea):
     """Enhanced TextArea optimized for Vietnamese IMEs (GoTiengViet, EVKey, OpenKey, UniKey).
@@ -42,7 +44,7 @@ class VietnameseTextArea(TextArea):
         text = self.selected_text or self.text
         if text:
             if copy_to_clipboard(text, app=self.app):
-                msg = "Đã copy đoạn chọn vào Clipboard! ✓" if self.selected_text else "Đã copy nội dung vào Clipboard! ✓"
+                msg = "Selection copied" if self.selected_text else "Note copied"
                 self.notify(msg, severity="information")
 
     async def _on_key(self, event: events.Key) -> None:
@@ -157,91 +159,82 @@ class VietnameseInput(Input):
 
 
 class NoteListItem(ListItem):
-    """A list item representing a note summary in the sidebar."""
-
     def __init__(self, summary: NoteSummary):
         super().__init__()
         self.summary = summary
+        self.tooltip = str(summary.filepath)
 
     def compose(self) -> ComposeResult:
-        if self.summary.encrypted:
-            icon = "🔒"
-        elif self.summary.note_type == "journal":
-            icon = "📓"
-        else:
-            icon = "📝"
-        short_date = self.summary.date.replace("T", " ")[:10]
-        tags_str = " ".join(f"#{t}" for t in self.summary.tags[:3])
-        if tags_str:
-            tags_str = f" [#7dcfff]{tags_str}[/#7dcfff]"
-
-        title = self.summary.title
-        if len(title) > 22:
-            title = title[:21] + "…"
-
-        text = (
-            f"{icon} [bold #c0caf5]{title}[/bold #c0caf5]\n"
-            f"   [#565f89]{short_date}[/#565f89]{tags_str}"
-        )
+        note = self.summary
+        prefix = "* " if note.pinned else ""
+        if note.encrypted:
+            prefix += "[locked] "
+        text = Text(prefix + note.title + "\n", style=PALETTE['text'])
+        text.stylize("bold", 0, len(prefix + note.title))
+        from datetime import datetime
+        updated = datetime.fromtimestamp(note.mtime_ns / 1e9).strftime('%b %d') if note.mtime_ns else note.date[:10]
+        text.append(updated + "  " + " ".join('#' + t for t in note.tags[:2]) + "\n", style=PALETTE['secondary'])
+        text.append(note.filepath.parent.name + " / ", style=PALETTE['muted'])
+        import re
+        highlighted = False
+        for part in re.split(r'(\[\[/?HIGHLIGHT\]\])', note.excerpt):
+            if part == '[[HIGHLIGHT]]':
+                highlighted = True
+            elif part == '[[/HIGHLIGHT]]':
+                highlighted = False
+            else:
+                text.append(part, style=('bold ' + PALETTE['accent']) if highlighted else PALETTE['muted'])
         yield Static(text, classes="note-item-text")
 
 
 class MetadataHeader(Vertical):
-    """Header bar showing current note metadata in top row and interactive mode buttons in bottom row."""
-
     def compose(self) -> ComposeResult:
-        yield Static("[#565f89]No note selected[/#565f89]", id="metadata-info")
+        yield Static("No note selected", id="metadata-info", markup=False)
+        yield Static("", id="metadata-details", markup=False)
         with Horizontal(id="mode-button-group"):
-            yield Button("👁 Xem", id="btn-mode-view", classes="mode-btn -active")
-            yield Button("📝 Soạn", id="btn-mode-edit", classes="mode-btn")
-            yield Button("◫ Song song", id="btn-mode-split", classes="mode-btn")
-            yield Button("✏ Đổi tên", id="btn-mode-rename", classes="mode-btn")
-            yield Button("📋 Copy", id="btn-mode-copy", classes="mode-btn")
-            yield Button("🔒 Khóa", id="btn-mode-lock", classes="mode-btn")
-            yield Button("🚀 Editor", id="btn-mode-ext", classes="mode-btn")
-            yield Button("💾 Lưu", id="btn-mode-save", classes="mode-btn")
+            for label, name, tip in [
+                ('View', 'view', 'View note (Ctrl+P)'), ('Edit', 'edit', 'Edit note (e)'),
+                ('Split', 'split', 'Live preview (Ctrl+W, terminal ≥160 columns)'),
+                ('Save', 'save', 'Save now (Ctrl+S)'), ('More', 'more', 'Organize and manage note')]:
+                yield Button(label, id=f"btn-mode-{name}", classes="mode-btn", tooltip=tip)
+            yield Static("Saved", id="save-status", markup=False)
 
     def update_metadata(self, note: Note | None, current_mode: str, is_unlocked: bool = False) -> None:
-        info_widget = self.query_one("#metadata-info", Static)
-        if not note:
-            info_widget.update("[#565f89]No note selected[/#565f89]")
-            return
-
-        if note.encrypted:
-            icon = "🔓" if is_unlocked else "🔒"
-        elif note.note_type == "journal":
-            icon = "📓"
+        title = self.query_one('#metadata-info', Static)
+        title.update(note.title if note else 'No note selected')
+        title.tooltip = note.title if note else ''
+        details = self.query_one('#metadata-details', Static)
+        if note:
+            state = ('Unlocked' if is_unlocked else 'Locked') if note.encrypted else note.note_type.title()
+            root = getattr(getattr(self.app, 'config', None), 'notes_dir', None)
+            path = str(note.filepath.parent.resolve().relative_to(root.resolve())) if root and note.filepath else ''
+            details.update(f"{path} · {state}  " + ' '.join('#' + t for t in note.tags))
+            details.tooltip = str(note.filepath)
         else:
-            icon = "📝"
-        tags_badge = " ".join(f"[#7dcfff]#{t}[/#7dcfff]" for t in note.tags) if note.tags else "[#565f89]none[/#565f89]"
-        formatted_date = note.date.replace("T", " ")[:16]
+            details.update('Create a note or choose one from the list.')
+        for mode in ('view', 'edit', 'split'):
+            btn = self.query_one(f'#btn-mode-{mode}', Button)
+            btn.variant = 'primary' if mode == current_mode else 'default'
+        for button in self.query(Button):
+            button.disabled = note is None
+        self.query_one('#btn-mode-split', Button).disabled = note is None or self.app.size.width < 160
 
-        content = (
-            f"{icon} [bold #c0caf5]{note.title}[/bold #c0caf5]  "
-            f"[#565f89]({formatted_date})[/#565f89]  "
-            f"Tags: {tags_badge}"
-        )
-        info_widget.update(content)
 
-        # Update active classes on mode buttons
-        for mode in ["view", "edit", "split"]:
-            try:
-                btn = self.query_one(f"#btn-mode-view" if mode == "view" else f"#btn-mode-{mode}", Button)
-                if mode == current_mode:
-                    btn.add_class("-active")
-                else:
-                    btn.remove_class("-active")
-            except Exception:
-                pass
+class NoteFooter(Footer):
+    """Stable controls: avoid rebuilding and binding footer widgets on every focus change."""
+    CONTROLS = [('quit', '^Q Quit'), ('new', '^N Capture'), ('edit', 'e Edit'),
+                ('view', '^P View'), ('folders', '^O Folders'), ('list', '^L Notes'),
+                ('save', '^S Save'), ('search', '/ Search'), ('help', '? Help')]
 
-        # Update lock button text
-        try:
-            lock_btn = self.query_one("#btn-mode-lock", Button)
-            if not note.encrypted:
-                lock_btn.label = "🔒 Khóa"
-            elif is_unlocked:
-                lock_btn.label = "🔐 Quản lý"
-            else:
-                lock_btn.label = "🔓 Mở khóa"
-        except Exception:
-            pass
+    def compose(self):
+        for action, label in self.CONTROLS:
+            yield Button(label, id='footer-' + action, classes='footer-btn')
+
+    def bindings_changed(self, screen):
+        if not self.is_mounted:
+            return
+        editing = getattr(self.app, 'edit_mode', False)
+        has_note = getattr(self.app, 'current_note', None) is not None
+        for action, _ in self.CONTROLS:
+            control = self.query_one('#footer-' + action, Button)
+            control.display = (action != 'edit' or has_note and not editing) and (action != 'view' or editing) and (action != 'save' or editing) and (action not in {'search', 'help'} or not editing)

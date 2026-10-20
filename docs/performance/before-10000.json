@@ -1,0 +1,35 @@
+{
+  "platform": "macOS-27.0-arm64-arm-64bit",
+  "python": "3.11.16",
+  "notes": 10000,
+  "animation": "subtle",
+  "cold_index_ms": 27994.2,
+  "search_p95_ms": 16.29,
+  "search_p95_with_debounce_ms": 166.29,
+  "warm_start_ms": 1469.7,
+  "rss_ready_mib": 69.67,
+  "cycle_rss": [
+    {
+      "cycles": 50,
+      "rss_mib": 115.84
+    },
+    {
+      "cycles": 100,
+      "rss_mib": 158.84
+    },
+    {
+      "cycles": 150,
+      "rss_mib": 202.41
+    },
+    {
+      "cycles": 200,
+      "rss_mib": 243.47
+    }
+  ],
+  "rss_large_edit_mib": 265.11,
+  "rss_large_view_mib": 269.25,
+  "idle_seconds": 60.0,
+  "idle_cpu_percent_one_core": 2.504,
+  "rss_final_mib": 302.38,
+  "peak_rss_mib": 316.38
+}

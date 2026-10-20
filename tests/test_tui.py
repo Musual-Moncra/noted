@@ -21,7 +21,8 @@ async def test_tui_app_mount_and_navigation(tmp_path, monkeypatch):
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
         # Verify app is mounted and has notes list
         assert app.is_mounted
         notes_list = app.query_one("#notes-list")
@@ -32,15 +33,15 @@ async def test_tui_app_mount_and_navigation(tmp_path, monkeypatch):
         assert app.current_note.title in ["First TUI Note", f"Daily Journal - {j1.id}"]
 
         # Toggle edit mode with 'e'
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.edit_mode is False
         await pilot.press("e")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.edit_mode is True
 
         # Exit edit mode back to view mode with escape
         await pilot.press("escape")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.edit_mode is False
 
         # Press 'slash' to focus search input
@@ -61,8 +62,8 @@ async def test_tui_edit_and_save(tmp_path, monkeypatch):
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
         assert app.current_note is not None
 
         # Enter edit mode
@@ -72,7 +73,7 @@ async def test_tui_edit_and_save(tmp_path, monkeypatch):
 
         # Save with Ctrl+S
         await pilot.press("ctrl+s")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         # Verify on-disk file was updated
         updated_note = storage.read_note(n.filepath)
@@ -85,12 +86,12 @@ async def test_tui_new_note_and_journal(tmp_path, monkeypatch):
     config = Config(notes_dir=notes_dir)
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
         
         # Test today journal action 'j'
         await pilot.press("j")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.current_note is not None
         assert app.current_note.note_type == "journal"
         assert "Highlights" in app.current_note.body
@@ -108,11 +109,11 @@ async def test_tui_formatting_shortcuts(tmp_path, monkeypatch):
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
         # Enter edit mode
         await pilot.press("e")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.edit_mode is True
 
         # Test bold formatting
@@ -141,11 +142,11 @@ async def test_tui_auto_save_on_view_toggle(tmp_path, monkeypatch):
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
         # Enter edit mode
         await pilot.press("e")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.edit_mode is True
 
         editor = app.query_one("#text-editor")
@@ -153,7 +154,7 @@ async def test_tui_auto_save_on_view_toggle(tmp_path, monkeypatch):
 
         # Switch to view mode without pressing ctrl+s
         await pilot.press("ctrl+p")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.edit_mode is False
 
         # Verify on-disk file was updated automatically
@@ -173,11 +174,11 @@ async def test_tui_split_mode_and_live_preview(tmp_path, monkeypatch):
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
         # Toggle split mode with ctrl+w
         await pilot.press("ctrl+w")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.note_mode == "split"
         assert app.edit_mode is True
 
@@ -188,11 +189,11 @@ async def test_tui_split_mode_and_live_preview(tmp_path, monkeypatch):
         # Type in editor and verify live preview updates
         editor = app.query_one("#text-editor")
         editor.text = "# Live Rendered Title"
-        await pilot.pause()
+        await pilot.pause(.2)
 
         # Switch to view mode via Escape
         await pilot.press("escape")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.note_mode == "view"
 
         # Verify auto-save worked
@@ -212,23 +213,23 @@ async def test_tui_mode_buttons(tmp_path, monkeypatch):
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
         assert app.note_mode == "view"
 
         # Click Edit button
         await pilot.click("#btn-mode-edit")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.note_mode == "edit"
 
         # Click Split button
         await pilot.click("#btn-mode-split")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.note_mode == "split"
 
         # Click View button
         await pilot.click("#btn-mode-view")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.note_mode == "view"
 
 @pytest.mark.asyncio
@@ -245,35 +246,35 @@ async def test_tui_modal_centering(tmp_path, monkeypatch):
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
 
         # Test NewNoteModal is centered
         await pilot.press("n")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, NewNoteModal)
         assert app.screen.styles.align_horizontal == "center"
         assert app.screen.styles.align_vertical == "middle"
         await pilot.press("escape")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         # Test HelpModal is centered
         await pilot.press("question_mark")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, HelpModal)
         assert app.screen.styles.align_horizontal == "center"
         assert app.screen.styles.align_vertical == "middle"
         await pilot.press("escape")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         # Test ConfirmDeleteModal is centered
         await pilot.press("d")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, ConfirmDeleteModal)
         assert app.screen.styles.align_horizontal == "center"
         assert app.screen.styles.align_vertical == "middle"
         await pilot.press("escape")
-        await pilot.pause()
+        await pilot.pause(.2)
 
 @pytest.mark.asyncio
 async def test_tui_color_format_modal(tmp_path, monkeypatch):
@@ -289,16 +290,16 @@ async def test_tui_color_format_modal(tmp_path, monkeypatch):
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
 
         # Enter edit mode
         await pilot.press("e")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         # Trigger color formatting modal
         app.action_format_color()
-        await pilot.pause()
+        await pilot.pause(.2)
 
         assert isinstance(app.screen, ColorFormatModal)
         assert app.screen.styles.align_horizontal == "center"
@@ -306,14 +307,14 @@ async def test_tui_color_format_modal(tmp_path, monkeypatch):
 
         # Press '1' to pick Red Text
         await pilot.press("1")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         editor = app.query_one("#text-editor")
         assert 'style="color: #f7768e"' in editor.text
 
         # Switch to view mode and verify rendered spans
         await pilot.click("#btn-mode-view")
-        await pilot.pause()
+        await pilot.pause(.2)
         viewer = app.query_one("#markdown-viewer")
         child_renders = [c.render() for c in viewer.children if hasattr(c, "render")]
         has_color_span = any(
@@ -335,8 +336,8 @@ async def test_tui_footer_and_header_rendered(tmp_path, monkeypatch):
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
         header = app.query_one(Header)
         footer = app.query_one(Footer)
         assert header.size.height == 1
@@ -357,14 +358,14 @@ async def test_tui_rename_note(tmp_path, monkeypatch):
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
         assert app.current_note is not None
         assert app.current_note.title == "Old Note Title"
 
         # Press 'r' to open RenameNoteModal
         await pilot.press("r")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         assert isinstance(app.screen, RenameNoteModal)
         assert app.screen.styles.align_horizontal == "center"
@@ -374,7 +375,7 @@ async def test_tui_rename_note(tmp_path, monkeypatch):
         inp = app.screen.query_one("#input-rename-title")
         inp.value = "New Updated Title"
         await pilot.press("enter")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         assert app.current_note.title == "New Updated Title"
         # Check disk update
@@ -396,14 +397,14 @@ async def test_header_and_toolbar_dimensions(tmp_path, monkeypatch):
 
     app = NotedApp(custom_config=config)
     async with app.run_test(size=(100, 30)) as pilot:
-        await pilot.pause()
+        await pilot.pause(.2)
         meta_info = app.query_one("#metadata-info")
         # Metadata info must NOT be crushed down to width 1!
         assert meta_info.size.width > 50
 
         # Switch to edit mode and verify toolbar total width is <= 45 columns
         app.set_mode("edit")
-        await pilot.pause()
+        await pilot.pause(.2)
         toolbar = app.query_one("#formatting-toolbar")
         total_btn_w = sum(btn.size.width for btn in toolbar.children)
         assert total_btn_w <= 45
@@ -424,8 +425,8 @@ async def test_tui_unlock_and_lock_note(tmp_path, monkeypatch):
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
         assert app.current_note is not None
         assert app.current_note.encrypted is True
 
@@ -435,12 +436,12 @@ async def test_tui_unlock_and_lock_note(tmp_path, monkeypatch):
 
         # Test wrong password
         await pilot.click("#btn-screen-unlock")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, UnlockNoteModal)
         pwd_input = app.screen.query_one("#input-unlock-password")
         pwd_input.value = "WrongPassword"
         await pilot.press("enter")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         # Still locked
         assert locked_card.display is True
@@ -448,12 +449,12 @@ async def test_tui_unlock_and_lock_note(tmp_path, monkeypatch):
 
         # Click unlock button again with correct password
         await pilot.click("#btn-screen-unlock")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, UnlockNoteModal)
         pwd_input = app.screen.query_one("#input-unlock-password")
         pwd_input.value = "Pass123!"
         await pilot.press("enter")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         # Should be unlocked
         assert locked_card.display is False
@@ -464,20 +465,20 @@ async def test_tui_unlock_and_lock_note(tmp_path, monkeypatch):
         # Switch to Public Note and lock it
         await pilot.press("down")
         await pilot.press("enter")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.current_note.title == "Public Note"
         assert app.current_note.encrypted is False
 
         # Trigger lock modal via key 'l'
         await pilot.press("l")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, LockNoteModal)
         p1 = app.screen.query_one("#input-lock-pass1")
         p2 = app.screen.query_one("#input-lock-pass2")
         p1.value = "NewSecret99"
         p2.value = "NewSecret99"
         await pilot.click("#btn-confirm-lock")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         # Public Note should now be locked and encrypted
         assert app.current_note.encrypted is True
@@ -505,57 +506,57 @@ async def test_tui_manage_lock_change_pass_and_remove_lock(tmp_path, monkeypatch
     indexer.sync_all()
 
     app = NotedApp(custom_config=config)
-    async with app.run_test() as pilot:
-        await pilot.pause()
+    async with app.run_test(size=(180, 45)) as pilot:
+        await pilot.pause(.2)
         # Unlock note first
         await pilot.click("#btn-screen-unlock")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, UnlockNoteModal)
         app.screen.query_one("#input-unlock-password").value = "OldPassA"
         await pilot.press("enter")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.current_note.id in app.unlocked_notes
 
         # Now press 'l' to open ManageLockModal
         await pilot.press("l")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, ManageLockModal)
 
         # 1. Test Change Password
         await pilot.click("#btn-opt-change-pass")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, ChangePasswordModal)
         app.screen.query_one("#input-new-pass1").value = "NewPassB"
         app.screen.query_one("#input-new-pass2").value = "NewPassB"
         await pilot.click("#btn-confirm-change")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         # 2. Re-lock note immediately
         await pilot.press("l")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, ManageLockModal)
         await pilot.click("#btn-opt-relock")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.current_note.id not in app.unlocked_notes
         assert app.query_one("#locked-note-card").display is True
 
         # 3. Unlock with NewPassB
         await pilot.click("#btn-screen-unlock")
-        await pilot.pause()
+        await pilot.pause(.2)
         app.screen.query_one("#input-unlock-password").value = "NewPassB"
         await pilot.press("enter")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert app.current_note.id in app.unlocked_notes
 
         # 4. Remove lock permanently
         await pilot.press("l")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, ManageLockModal)
         await pilot.click("#btn-opt-remove-lock")
-        await pilot.pause()
+        await pilot.pause(.2)
         assert isinstance(app.screen, ConfirmRemoveLockModal)
         await pilot.click("#btn-confirm-remove")
-        await pilot.pause()
+        await pilot.pause(.2)
 
         # Should now be a plain unencrypted note
         assert app.current_note.encrypted is False

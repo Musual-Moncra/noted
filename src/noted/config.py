@@ -1,7 +1,10 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 import os
-import tomllib
+try:
+    import tomllib
+except ImportError:  # Python 3.10
+    import tomli as tomllib
 
 DEFAULT_JOURNAL_TEMPLATE = """## Highlights
 
@@ -30,6 +33,7 @@ class Config:
     editor: str | None = None
     journal_template: str = DEFAULT_JOURNAL_TEMPLATE
     config_path: Path | None = None
+    animation: str = "subtle"
 
     @property
     def notes_subdir(self) -> Path:
@@ -53,6 +57,7 @@ def load_config(config_path: Path | None = None) -> Config:
     notes_dir = get_default_notes_dir()
     editor = os.environ.get("EDITOR") or os.environ.get("VISUAL")
     template = DEFAULT_JOURNAL_TEMPLATE
+    animation = "subtle"
 
     # 2. Try loading custom or default config file
     target_path = config_path or get_default_config_path()
@@ -66,6 +71,8 @@ def load_config(config_path: Path | None = None) -> Config:
                     notes_dir = Path(data["notes_dir"]).expanduser().resolve()
                 else:
                     notes_dir = Path(os.environ["NOTES_DIR"]).expanduser().resolve()
+            value = data.get("ui", {}).get("animation", "subtle")
+            animation = value if value in {"off", "subtle"} else "subtle"
             if "editor" in data:
                 editor = data["editor"]
             if "journal_template" in data:
@@ -77,5 +84,6 @@ def load_config(config_path: Path | None = None) -> Config:
         notes_dir=notes_dir,
         editor=editor,
         journal_template=template,
+        animation=animation,
         config_path=target_path if (target_path and target_path.exists()) else None,
     )
