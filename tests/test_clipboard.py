@@ -24,7 +24,7 @@ async def test_tui_copy_content_button_and_shortcut(tmp_path, monkeypatch):
     """Test TUI copy button and 'c' shortcut copy current note body to clipboard."""
     notes_dir = tmp_path / "copy_notes"
     monkeypatch.setenv("NOTES_DIR", str(notes_dir))
-    config = Config(notes_dir=notes_dir)
+    config = Config(notes_dir=notes_dir, animation="off")
     storage = StorageManager(config)
     db = DatabaseManager(config.db_path)
     indexer = NoteIndexer(db, storage)
@@ -48,9 +48,11 @@ async def test_tui_copy_content_button_and_shortcut(tmp_path, monkeypatch):
         # Click the [📋 Copy] button in MetadataHeader
         await pilot.click("#btn-mode-more", offset=(2, 1))
         await pilot.pause()
-        app.screen.query_one("#menu-copy").scroll_visible(animate=False)
+        copy_button = app.screen.query_one("#menu-copy")
+        copy_button.focus()
+        copy_button.scroll_visible(animate=False)
         await pilot.pause()
-        await pilot.click("#menu-copy", offset=(2, 1))
+        assert await pilot.click("#menu-copy", offset=(2, 1))
         await pilot.pause(.2)
         assert len(copied_items) == 2
 
@@ -59,7 +61,7 @@ async def test_tui_copy_selection_in_editor(tmp_path, monkeypatch):
     """Test copying selected text in edit mode copies only the selection."""
     notes_dir = tmp_path / "copy_select_notes"
     monkeypatch.setenv("NOTES_DIR", str(notes_dir))
-    config = Config(notes_dir=notes_dir)
+    config = Config(notes_dir=notes_dir, animation="off")
     storage = StorageManager(config)
     db = DatabaseManager(config.db_path)
     indexer = NoteIndexer(db, storage)

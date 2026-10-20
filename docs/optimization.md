@@ -26,7 +26,7 @@ CLI tables show the last 12 characters of long note IDs to keep titles readable.
 | Below 100 | Workspace; navigation and notes open as drawers |
 | 160+ | Split editing and preview available |
 
-The UI uses a shared Tokyo Night palette with distinct selection, focus, success, warning, and error states. The footer has stable controls instead of recreating reactive bindings on every focus change. All UI text is English; note content and Vietnamese IME support are preserved.
+The UI uses a shared Tokyo Night palette with distinct selection, focus, success, warning, and error states. Buttons use the original raised edges with hover and pressed states; keyboard focus keeps bold text without reversing the label. The footer has stable controls instead of recreating reactive bindings on every focus change. All UI text is English; note content and Vietnamese IME support are preserved.
 
 Motion lasts 100–180 ms: hover colors, focus borders, note/mode fades and navigation drawer transitions. Popups use their original centered layout, spacing, button style, and immediate open/close behavior. There are no continuous background animations. Plaintext is hidden immediately when relocking. Disable motion in the existing config file (`~/.config/noted/config.toml` on macOS/Linux, `~/.notes/config.toml` on Windows):
 
@@ -78,7 +78,7 @@ Validation includes safe rename failures, external-file conflicts and snapshot r
 | UI previews | 60×20, 80×24, 100×30, 140×40, 180×45, Split and actions menu inspected |
 
 
-Windows/Linux runtime and physical IME behavior were not tested on this macOS host. CI retains the existing three-OS Python matrix; it has not been run remotely or published in this task.
+GitHub Actions runs the full suite on Windows, Linux, and macOS with Python 3.10–3.12. The Windows Python 3.11 job also builds `noted.exe`, runs `--help`, and uploads the executable as `noted-windows-x64`. [CI runs](https://github.com/Musual-Moncra/noted/actions/workflows/ci.yml) contain the results for each commit. Interactive Windows terminal appearance and physical IME behavior still require a manual check on that machine.
 
 ## Reproduce
 
