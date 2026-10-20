@@ -421,6 +421,11 @@ class HelpModal(ModalScreen[None]):
     def on_mount(self) -> None:
         self.query_one("#btn-close", Button).focus()
 
+        def reset_scroll():
+            self.query_one(".modal-dialog").scroll_to(y=0, animate=False)
+
+        self.call_after_refresh(reset_scroll)
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         self.dismiss(None)
 

@@ -43,14 +43,16 @@ ListView:focus ListItem.-highlight { border-left: thick $noted-accent; }
 #resource-status { height: auto; max-height: 2; color: $noted-warning; padding: 0 1; }
 #main-workspace { height: 1fr; }
 #edit-container, #view-container { width: 1fr; height: 1fr; }
+#edit-container { display: none; }
 #view-container { padding: 1 2; scrollbar-size: 1 1; align-horizontal: center; }
 #markdown-viewer { width: 100%; }
+#render-full { display: none; }
 #formatting-toolbar { height: 3; padding: 0 1; background: $noted-panel; overflow-x: auto; scrollbar-size-horizontal: 0; }
 .fmt-btn { min-width: 3; height: 3; padding: 0 1; margin-right: 1; }
 #text-editor { height: 1fr; border: none; border-left: solid transparent; background: $noted-base; }
 #text-editor:focus { border-left: solid $noted-accent; }
-#empty-actions { height: auto; align: center middle; }
-#empty-actions Button { min-width: 12; }
+#empty-actions { height: auto; align: center middle; padding: 1 0; }
+#empty-actions Button { min-width: 14; margin: 0 1; }
 #main-container Button:disabled { opacity: 40%; }
 Screen.-motion Button { transition: background 100ms, color 100ms; }
 Screen.-motion Input { transition: border-top 100ms, border-bottom 100ms; }
@@ -90,6 +92,7 @@ ModalScreen {
 
 .help-row {
     layout: horizontal;
+    height: auto;
     margin-bottom: 1;
 }
 
@@ -129,6 +132,7 @@ ModalScreen {
 
 .menu-action { height: 3; width: 100%; margin-bottom: 1; }
 #locked-note-card {
+    display: none;
     width: 50;
     max-width: 90%;
     height: auto;

@@ -185,6 +185,8 @@ class NotedApp(App[None]):
         await self.refresh_notes_list()
         self.set_mode('view')
         self.apply_layout()
+        if not self.current_note:
+            self.display_mode()
         self.main_query('#view-container').can_focus = True
         self.main_query('#notes-list' if self.size.width >= 100 else '#view-container').focus()
         self.start_sync()
@@ -264,11 +266,17 @@ class NotedApp(App[None]):
                     break
                 except (OSError, ValueError):
                     continue
+        elif not self.current_note:
+            self.display_mode()
         self.main_query('#page-status', Static).update(f'{self.page + 1} / {max(1, (self.total_notes + 99) // 100)} · {self.total_notes}')
         self.main_query('#page-prev', Button).disabled = self.page == 0
         self.main_query('#page-next', Button).disabled = (self.page + 1) * PAGE_SIZE >= self.total_notes
-        self.main_query('#list-empty', Static).update('No results. Clear filters or create a note.' if not notes else '')
+        has_filter = bool(self.selected_folder or self.selected_tags or self.selected_type or getattr(self, 'search_query', ''))
+        self.main_query('#list-empty', Static).update(
+            ('No matching notes.' if has_filter else 'No notes yet.') if not notes else ''
+        )
         self.main_query('#empty-actions').display = not notes
+        self.main_query('#empty-clear').display = not notes and has_filter
         path = str(self.selected_folder.relative_to(self.config.notes_subdir.resolve())) if self.selected_folder else self._scope.title()
         self.main_query('#list-scope', Static).update(path or 'notes/')
         self.main_query('#active-filters', Static).update((self.selected_type.title() + ' · ' if self.selected_type else '') + ' '.join('#' + t for t in self.selected_tags))
@@ -364,7 +372,14 @@ class NotedApp(App[None]):
                     text = text.encode('utf-8')[:LARGE_NOTE_BYTES].decode('utf-8', errors='ignore') + '\n\n*Preview limited to 256 KB.*'
                 viewer.update(text or '*Empty note.*')
             else:
-                viewer.update('' if self.current_note else '*Choose a note or create your first one.*')
+                if not self.current_note:
+                    has_filter = bool(self.selected_folder or self.selected_tags or self.selected_type or getattr(self, 'search_query', ''))
+                    if has_filter:
+                        viewer.update('# 🔍 No Matching Notes\n\nNo notes match your active search or filters.\n\n- Click **Clear filters** below to see all notes.')
+                    else:
+                        viewer.update('# 📓 Welcome to Noted\n\nYour library is empty.\n\n- Press **N** or click **Create note** below to start writing.\n- Press **J** to create today\'s journal entry.\n- Press **?** for keyboard shortcuts.')
+                else:
+                    viewer.update('')
                 viewer.remove_children()
         self.main_query('#render-full').display = bool(self.current_note and self.large_note and editable)
         self.main_query('#formatting-toolbar').display = self.edit_mode

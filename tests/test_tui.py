@@ -277,6 +277,33 @@ async def test_tui_modal_centering(tmp_path, monkeypatch):
         await pilot.pause(.2)
 
 @pytest.mark.asyncio
+async def test_tui_empty_library_clean_state(tmp_path, monkeypatch):
+    from textual.widgets import Button
+    notes_dir = tmp_path / "tui_empty_clean"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        assert app.query_one("#locked-note-card").display is False
+        assert app.query_one("#render-full").display is False
+        assert app.query_one("#formatting-toolbar").display is False
+        assert app.query_one("#edit-container").display is False
+        assert app.query_one("#view-container").display is True
+        assert app.query_one("#empty-actions").display is True
+        assert app.query_one("#empty-create").display is True
+        assert app.query_one("#empty-clear").display is False
+        assert "No notes yet." in str(app.query_one("#list-empty").render())
+        assert "Welcome to Noted" in app.query_one("#markdown-viewer").source
+        for m in ("view", "edit", "split", "save", "more"):
+            assert app.query_one(f"#btn-mode-{m}", Button).disabled is True
+
+@pytest.mark.asyncio
 async def test_tui_selection_no_layout_shift(tmp_path, monkeypatch):
     from textual.widgets import ListView
     notes_dir = tmp_path / "tui_no_shift"
