@@ -23,7 +23,7 @@ from noted.storage import StorageManager, ExternalChangeError
 from noted.editor import open_in_editor
 import noted.markdown_colors  # noqa: F401
 from noted.tui.theme import PALETTE
-from noted.tui.widgets import MetadataHeader, NoteListItem, VietnameseInput, VietnameseTextArea, NoteFooter
+from noted.tui.widgets import MetadataHeader, NoteListItem, VietnameseInput, VietnameseTextArea, NoteFooter, NoteMarkdown
 from noted.tui.screens import (NewNoteModal, RenameNoteModal, ConfirmDeleteModal, HelpModal,
     UnlockNoteModal, LockNoteModal, ManageLockModal, ChangePasswordModal,
     ConfirmRemoveLockModal, ColorFormatModal, TextPromptModal, ActionMenuModal,
@@ -166,7 +166,7 @@ class NotedApp(App[None]):
                             yield Static('🔒 PROTECTED NOTE', id='locked-card-title')
                             yield Static('This note is encrypted with AES-256.\nClick below or press [b]u[/b] to unlock:', id='locked-card-desc')
                             yield Button('🔓 Unlock note', id='btn-screen-unlock', variant='primary')
-                        yield Markdown(id='markdown-viewer')
+                        yield NoteMarkdown(id='markdown-viewer')
                         yield Button('Render full note', id='render-full')
                 with Horizontal(id='empty-actions'):
                     yield Button('Create note', id='empty-create', variant='primary')
@@ -250,7 +250,11 @@ class NotedApp(App[None]):
             sort=self.main_query('#sort-order', Select).value, **filters)
         listing = self.main_query('#notes-list', ListView)
         await listing.clear()
+        if not self.is_running:
+            return
         await listing.extend(NoteListItem(n) for n in notes)
+        if not self.is_running:
+            return
         selected = select_id or (self.current_note.id if self.current_note else None)
         listing.index = next((i for i, n in enumerate(notes) if n.id == selected), None if self.current_note else 0 if notes else None)
         if not self.current_note and notes:
@@ -663,12 +667,16 @@ class NotedApp(App[None]):
         values = self.indexer.list_tags(query=self.main_query('#tag-search', Input).value, limit=30, offset=self._tag_page * 30)
         listing = self.main_query('#tag-list', ListView)
         await listing.clear()
+        if not self.is_running:
+            return
         items = []
         for tag, count in values:
             item = ListItem(Static(f'{"✓ " if tag in self.selected_tags else ""}#{tag}  {count}', markup=False))
             item.tag_value = tag
             items.append(item)
         await listing.extend(items)
+        if not self.is_running:
+            return
         self.main_query('#tags-prev', Button).disabled = self._tag_page == 0
         self.main_query('#tags-next', Button).disabled = len(values) < 30
 

@@ -1,12 +1,34 @@
+import asyncio
 import unicodedata
 from textual import events
 from textual.app import ComposeResult
+from textual.await_complete import AwaitComplete
 from textual.containers import Horizontal, Vertical
 from textual.document._document import EditResult, Location
-from textual.widgets import Button, Input, ListItem, Static, TextArea, Footer
+from textual.widgets import Button, Input, ListItem, Static, TextArea, Footer, Markdown
 from noted.models import Note, NoteSummary
 from rich.text import Text
 from noted.tui.theme import PALETTE
+
+class NoteMarkdown(Markdown):
+    """Capture old blocks only after the preceding render has finished."""
+
+    def __init__(self, *args, **kwargs):
+        self._render_lock = asyncio.Lock()
+        self._render_revision = 0
+        super().__init__(*args, **kwargs)
+
+    def update(self, markdown: str) -> AwaitComplete:
+        self._render_revision += 1
+        revision = self._render_revision
+
+        async def render():
+            async with self._render_lock:
+                if revision == self._render_revision and self.is_mounted:
+                    await super(NoteMarkdown, self).update(markdown)
+
+        return AwaitComplete(render())
+
 
 class VietnameseTextArea(TextArea):
     """Enhanced TextArea optimized for Vietnamese IMEs (GoTiengViet, EVKey, OpenKey, UniKey).

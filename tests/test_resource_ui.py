@@ -102,7 +102,8 @@ async def test_responsive_layout_and_bounded_pages(seeded):
         storage.create_note(f'Note {i}')
     async with NotedApp(custom_config=config).run_test(size=(180, 45)) as pilot:
         app = pilot.app
-        await pilot.pause(0.5)
+        await app.workers.wait_for_complete()
+        await pilot.pause()
         assert len(app.query_one('#notes-list').children) == 100
         app.action_next_page()
         await pilot.pause()
