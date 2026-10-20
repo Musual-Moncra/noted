@@ -10,6 +10,26 @@
 
 ---
 
+### ⚡ Quick Install (1 Lệnh Dùng Ngay - Không Cần Python)
+
+Cài đặt và sử dụng ngay lập tức chỉ với một lệnh duy nhất:
+
+#### 🍎 macOS & 🐧 Linux
+```bash
+curl -fsSL https://raw.githubusercontent.com/Musual-Moncra/noted/main/install.sh | bash
+```
+
+#### 🪟 Windows (PowerShell / Windows Terminal)
+```powershell
+irm https://raw.githubusercontent.com/Musual-Moncra/noted/main/install.ps1 | iex
+```
+
+*Tự động tải bản binary phù hợp, cấu hình biến môi trường `PATH`, có thể gõ ngay `noted` hoặc `note` từ bất kỳ cửa sổ terminal nào.*
+
+> 💡 **Mẹo hiển thị đẹp trên Windows:** Hãy mở bằng **Windows Terminal** (kèm font *Cascadia Code* hoặc *JetBrains Mono / Nerd Font*) để tận hưởng trọn vẹn dải màu 24-bit TrueColor và bộ icon sắc nét như trên macOS thay vì chạy trong cửa sổ Command Prompt (`conhost.exe`) cổ điển.
+
+---
+
 ## Features
 
 ### Organized, responsive, and resource conscious
@@ -39,23 +59,41 @@
 
 ---
 
-## Installation & Windows Downloads
+## Installation
 
-### 🪟 Windows (Standalone Executable - No Python Required)
+### ⚡ One-Line Quick Install (Recommended - No Python Required)
 
-1. Go to the [**Latest GitHub Releases**](https://github.com/Musual-Moncra/noted/releases).
-2. Download `noted-windows-x64.zip`.
-3. Extract the archive and double-click `noted.exe` (or open it inside **Windows Terminal** / PowerShell):
-   ```powershell
-   .\noted.exe
-   ```
-4. *(Recommended)* Add the folder containing `noted.exe` to your System `PATH` so you can type `noted` from any terminal.
+Run the single command for your operating system:
+
+#### 🍎 macOS & 🐧 Linux
+Open your terminal and run:
+```bash
+curl -fsSL https://raw.githubusercontent.com/Musual-Moncra/noted/main/install.sh | bash
+```
+> Automatically detects your OS (macOS Apple Silicon / Intel or Linux x64), downloads the latest standalone binary to `~/.local/bin`, creates both `noted` and `note` commands, and configures your shell `$PATH`.
+
+#### 🪟 Windows (PowerShell)
+Open **PowerShell** or **Windows Terminal** and run:
+```powershell
+irm https://raw.githubusercontent.com/Musual-Moncra/noted/main/install.ps1 | iex
+```
+> Automatically downloads `noted-windows-x64.zip`, installs to `%LOCALAPPDATA%\Programs\noted`, creates both `noted.exe` and `note.exe`, and adds them to your User `PATH` environment variable.
+
+---
+
+### 📦 Manual Download & Releases
+
+Go to the [**Latest GitHub Releases**](https://github.com/Musual-Moncra/noted/releases) to download standalone archives directly:
+- **Windows x64**: `noted-windows-x64.zip` (chạy trực tiếp `noted.exe`)
+- **macOS Apple Silicon (M1/M2/M3/M4)**: `noted-macos-arm64.tar.gz`
+- **macOS Intel**: `noted-macos-x64.tar.gz`
+- **Linux x64**: `noted-linux-x64.tar.gz`
 
 > **Tip for Windows Terminal users**: For the best visual experience with emojis and icons, use [Windows Terminal](https://aka.ms/terminal) with a font that supports symbols (such as Cascadia Code, JetBrains Mono, or any Nerd Font).
 
 ---
 
-### 📦 Install via Python Package Manager (`uv`, `pipx`, `pip`)
+### 🐍 Install via Python Package Manager (`uv`, `pipx`, `pip`)
 
 Works on **macOS**, **Linux**, and **Windows**:
 

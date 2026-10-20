@@ -188,7 +188,7 @@ class NotedApp(App[None]):
         if not self.current_note:
             self.display_mode()
         self.main_query('#view-container').can_focus = True
-        self.main_query('#notes-list' if self.size.width >= 100 else '#view-container').focus()
+        self.main_query('#notes-list' if self.size.width >= 75 else '#view-container').focus()
         self.start_sync()
 
     def start_sync(self):
@@ -311,7 +311,7 @@ class NotedApp(App[None]):
         self.note_mode = 'view'
         self.display_mode()
         self.fade(self.main_query('#view-container'), 0.12)
-        if self.size.width < 100:
+        if self.size.width < 75:
             self._list_open = False
             self.apply_layout()
         return True
@@ -525,23 +525,32 @@ class NotedApp(App[None]):
         if self.edit_mode:
             self.main_query('#text-editor').focus()
         else:
-            self.main_query('#notes-list' if self.size.width >= 100 else '#view-container').focus()
+            self.main_query('#notes-list' if self.size.width >= 75 else '#view-container').focus()
 
     def on_resize(self, event: events.Resize):
         if hasattr(self, 'config'):
-            self._nav_open = self._list_open = None
+            width = event.size.width
+            height = event.size.height
+            if width >= 130:
+                self._nav_open = None
+            if width >= 75:
+                self._list_open = None
+            elif self._list_open is None and self.main_query('#sidebar').has_focus_within:
+                self._list_open = True
             self._nav_animation_version += 1
             self.main_query('#navigation').styles.opacity = 1
             self.main_query('#navigation').styles.offset = (0, 0)
-            self.apply_layout(event.size.width)
+            self.apply_layout(width, height)
             self.call_after_refresh(self.update_header)
 
-    def apply_layout(self, width=None):
+    def apply_layout(self, width=None, height=None):
         width = self.size.width if width is None else width
-        self.screen_stack[0].set_class(width < 140, '-compact')
-        self.screen_stack[0].set_class(width < 100, '-narrow')
-        self.main_query('#navigation').display = width >= 140 if self._nav_open is None else self._nav_open
-        self.main_query('#sidebar').display = width >= 100 if self._list_open is None else self._list_open
+        height = self.size.height if height is None else height
+        self.screen_stack[0].set_class(width < 130, '-compact')
+        self.screen_stack[0].set_class(width < 75, '-narrow')
+        self.screen_stack[0].set_class(height < 20, '-short')
+        self.main_query('#navigation').display = width >= 130 if self._nav_open is None else self._nav_open
+        self.main_query('#sidebar').display = width >= 75 if self._list_open is None else self._list_open
         if width < 160 and self.note_mode == 'split':
             self.set_mode('edit', save=False)
         if hasattr(self, 'config'):
@@ -577,6 +586,8 @@ class NotedApp(App[None]):
         self.apply_layout()
         if self.main_query('#sidebar').display:
             self.main_query('#notes-list').focus()
+        else:
+            self.main_query('#text-editor' if self.edit_mode else '#view-container').focus()
 
     def on_list_view_selected(self, event: ListView.Selected):
         if event.list_view.id == 'notes-list' and isinstance(event.item, NoteListItem):
@@ -633,9 +644,10 @@ class NotedApp(App[None]):
         for name in ('all', 'pinned', 'journals', 'archive'):
             self.main_query('#nav-' + name, Button).variant = 'primary' if name == scope else 'default'
         self.call_later(self.refresh_notes_list)
-        if self.size.width < 140:
+        if self.size.width < 130:
             self._nav_open = False
-            self._list_open = True
+            if self.size.width < 75:
+                self._list_open = True
             self.apply_layout()
 
     def build_folder_tree(self):
@@ -668,9 +680,10 @@ class NotedApp(App[None]):
             self._scope = 'all'
             self.page = 0
             self.call_later(self.refresh_notes_list)
-            if self.size.width < 140:
+            if self.size.width < 130:
                 self._nav_open = False
-                self._list_open = True
+                if self.size.width < 75:
+                    self._list_open = True
                 self.apply_layout()
 
     async def refresh_tags(self):
@@ -1008,14 +1021,15 @@ class NotedApp(App[None]):
             self.action_focus_list()
 
     def action_focus_list(self):
-        if self.size.width < 100:
+        if self.size.width < 75:
             self._list_open = True
             self.apply_layout()
         self.main_query('#notes-list').focus()
 
     def action_focus_search(self):
-        self._list_open = True
-        self.apply_layout()
+        if self.size.width < 75:
+            self._list_open = True
+            self.apply_layout()
         self.main_query('#search-input').focus()
 
     def action_show_help(self):

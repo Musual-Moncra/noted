@@ -650,5 +650,58 @@ async def test_tui_manage_lock_change_pass_and_remove_lock(tmp_path, monkeypatch
         assert app.query_one("#markdown-viewer").display is True
 
 
+@pytest.mark.asyncio
+async def test_tui_scale_ui_shrink_preserves_interface(tmp_path, monkeypatch):
+    notes_dir = tmp_path / "tui_scale_notes"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    storage.create_note(title="Scaling Test Note", body="# Heading\nContent line 1\nContent line 2")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test(size=(80, 24)) as pilot:
+        await pilot.pause(0.2)
+        # On standard 80x24 terminal, sidebar and content area are both visible
+        assert app.query_one("#sidebar").display is True
+        assert app.query_one("#content-area").display is True
+        assert app.query_one("#navigation").display is False
+
+        # Shrink height down to short terminal (80, 14)
+        await pilot.resize_terminal(80, 14)
+        await pilot.pause(0.2)
+        assert "-short" in app.screen.classes
+        # Main workspace must not collapse to 0 height or get pushed off-screen
+        workspace = app.query_one("#main-workspace")
+        assert workspace.display is True
+        assert workspace.region.height >= 4
+
+        # Switch focus to note view container
+        app.query_one("#view-container").focus()
+        await pilot.pause(0.1)
+
+        # Shrink width to narrow terminal (60, 20)
+        await pilot.resize_terminal(60, 20)
+        await pilot.pause(0.2)
+        assert "-narrow" in app.screen.classes
+        assert app.query_one("#content-area").display is True
+        # Sidebar collapses to drawer when viewing note below 75 cols
+        assert app.query_one("#sidebar").display is False
+
+        # Open sidebar drawer in narrow mode
+        app.action_toggle_list()
+        await pilot.pause(0.2)
+        assert app.query_one("#sidebar").display is True
+
+        # Resizing while drawer is open preserves drawer state
+        await pilot.resize_terminal(65, 20)
+        await pilot.pause(0.2)
+        assert app.query_one("#sidebar").display is True
+
+
+
 
 

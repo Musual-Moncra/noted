@@ -33,6 +33,24 @@ app = typer.Typer(
 )
 
 if sys.platform == "win32":
+    import ctypes
+    # Enable UTF-8 codepage on Windows console
+    try:
+        ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        ctypes.windll.kernel32.SetConsoleCP(65001)
+    except Exception:
+        pass
+
+    # Enable Virtual Terminal Processing (VT mode) for 24-bit TrueColor and ANSI escapes
+    try:
+        kernel32 = ctypes.windll.kernel32
+        h_out = kernel32.GetStdHandle(-11)  # STD_OUTPUT_HANDLE
+        mode = ctypes.c_ulong()
+        if kernel32.GetConsoleMode(h_out, ctypes.byref(mode)):
+            kernel32.SetConsoleMode(h_out, mode.value | 0x0004)  # ENABLE_VIRTUAL_TERMINAL_PROCESSING
+    except Exception:
+        pass
+
     if hasattr(sys.stdout, "reconfigure"):
         try:
             sys.stdout.reconfigure(encoding="utf-8")

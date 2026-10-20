@@ -21,10 +21,15 @@ CLI tables show the last 12 characters of long note IDs to keep titles readable.
 
 | Terminal width | Default layout |
 |---|---|
-| 140+ columns | Folders/tags (24), notes (32), workspace |
-| 100–139 | Notes (28) and workspace; navigation opens as a drawer |
-| Below 100 | Workspace; navigation and notes open as drawers |
+| 130+ columns | Folders/tags (24), notes (30), workspace |
+| 75–129 | Notes (26) and workspace; navigation opens as a drawer |
+| Below 75 | Workspace; navigation and notes open as drawers |
 | 160+ | Split editing and preview available |
+
+Responsive adaptation:
+- **Narrow screens (< 75 columns):** The notes list and navigation fold into left-docked overlay drawers (`Ctrl+L` and `Ctrl+O`) so the active workspace has full viewport width. User-opened drawer states persist across terminal resizing without collapsing.
+- **Short viewports (< 20 rows):** The screen enters `-short` mode, condensing `#metadata-header` from 7 rows to 4 rows, hiding secondary metadata badges, collapsing the formatting toolbar and mode buttons to single-line controls, and reducing list item heights to 4 rows. This ensures `#main-workspace` and the text editor maintain positive height and never get pushed off-screen.
+- **Compact footer:** On narrow terminals, lesser-used hints are hidden so primary shortcuts (`^Q`, `e`, `^O`, `^L`, `/`) remain visible without truncation.
 
 The UI uses a shared Tokyo Night palette with distinct selection, focus, success, warning, and error states. Buttons use the original raised edges with hover and pressed states; keyboard focus keeps bold text without reversing the label. The footer has stable controls instead of recreating reactive bindings on every focus change. All UI text is English; note content and Vietnamese IME support are preserved.
 
@@ -70,12 +75,13 @@ Validation includes safe rename failures, external-file conflicts and snapshot r
 
 | macOS validation | Result |
 |---|---|
-| Python 3.10.21 | 102 tests passed |
-| Python 3.11.16 | 102 tests passed |
-| Python 3.12.14 | 102 tests passed |
+| Python 3.10.21 | 107 tests passed |
+| Python 3.11.16 | 107 tests passed |
+| Python 3.12.14 | 107 tests passed |
 | Wheel and source distribution | Built successfully; TUI CSS/palette included |
 | PTY open/edit/save/quit | Passed; persisted content checked |
 | UI previews | 60×20, 80×24, 100×30, 140×40, 180×45, Split and actions menu inspected |
+| One-line installers | Verified for macOS/Linux (install.sh) and Windows (install.ps1) |
 
 
 GitHub Actions runs the full suite on Windows, Linux, and macOS with Python 3.10–3.12. The Windows Python 3.11 job also builds `noted.exe`, runs `--help`, and uploads the executable as `noted-windows-x64`. [CI runs](https://github.com/Musual-Moncra/noted/actions/workflows/ci.yml) contain the results for each commit. Interactive Windows terminal appearance and physical IME behavior still require a manual check on that machine.

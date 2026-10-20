@@ -114,7 +114,16 @@ async def test_responsive_layout_and_bounded_pages(seeded):
         await pilot.pause()
         assert app.note_mode == 'edit'
         assert not app.query_one('#navigation').display
+        assert app.query_one('#sidebar').display
+        await pilot.resize_terminal(60, 20)
+        await pilot.pause()
         assert not app.query_one('#sidebar').display
+        app.action_toggle_list()
+        await pilot.pause()
+        assert app.query_one('#sidebar').display
+        await pilot.resize_terminal(65, 20)
+        await pilot.pause()
+        assert app.query_one('#sidebar').display
 
 
 @pytest.mark.asyncio

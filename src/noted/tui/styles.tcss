@@ -3,10 +3,11 @@ Header { height: 1; background: $noted-panel; color: $noted-accent; text-style: 
 Footer { height: 1; background: $noted-panel; color: $noted-muted; }
 #main-container { height: 1fr; layout: horizontal; }
 #navigation { width: 24; background: $noted-panel; border-right: solid $noted-border; padding: 0 1; scrollbar-size: 1 1; }
-#sidebar { width: 32; background: $noted-panel; border-right: solid $noted-border; padding: 0 1; }
-Screen.-compact #sidebar { width: 28; }
-Screen.-narrow #sidebar { layer: overlay; dock: left; width: 30; }
-Screen.-compact #navigation { layer: overlay; dock: left; width: 26; }
+#sidebar { width: 30; background: $noted-panel; border-right: solid $noted-border; padding: 0 1; }
+Screen.-compact #sidebar { width: 26; }
+Screen.-narrow #sidebar { layer: overlay; dock: left; width: 28; max-width: 90%; }
+Screen.-compact #navigation { layer: overlay; dock: left; width: 24; max-width: 85%; }
+Screen.-narrow #navigation { layer: overlay; dock: left; width: 24; max-width: 85%; }
 #content-area { width: 1fr; min-width: 16; }
 .section-label { height: 1; margin-top: 1; color: $noted-muted; text-style: bold; }
 .nav-btn { width: 1fr; height: 3; min-width: 1; text-align: left; padding: 0 1; }
@@ -183,3 +184,21 @@ MarkdownH3 { color: $noted-secondary; text-style: bold; }
 
 /* Focus keeps the raised button appearance without reversing the label. */
 Button:focus { text-style: bold; background-tint: transparent; }
+
+/* Responsive adjustments for scaled / shrunk viewports */
+Screen.-short #metadata-header { height: 4; }
+Screen.-short #metadata-details { display: none; }
+Screen.-short #mode-button-group { height: 1; margin-top: 1; }
+Screen.-short .mode-btn { height: 1; min-width: 4; border: none; padding: 0 1; }
+Screen.-short #save-status { height: 1; }
+Screen.-short #formatting-toolbar { height: 1; }
+Screen.-short .fmt-btn { height: 1; border: none; }
+Screen.-short #notes-list ListItem { height: 4; padding: 0 1; }
+Screen.-short #view-container { padding: 0 1; }
+
+Screen.-compact #btn-mode-split { display: none; }
+Screen.-narrow #btn-mode-split { display: none; }
+Screen.-narrow .mode-btn { min-width: 4; padding: 0; margin-right: 1; }
+Screen.-narrow .footer-btn { padding: 0; margin-right: 1; }
+Screen.-narrow #footer-new,
+Screen.-narrow #footer-help { display: none; }

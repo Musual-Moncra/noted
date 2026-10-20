@@ -28,6 +28,10 @@ jobs:
             artifact_name: noted-macos-arm64.tar.gz
             binary_src: dist/noted
             archive_cmd: tar -czvf noted-macos-arm64.tar.gz -C dist noted
+          - os: macos-13
+            artifact_name: noted-macos-x64.tar.gz
+            binary_src: dist/noted
+            archive_cmd: tar -czvf noted-macos-x64.tar.gz -C dist noted
 
     steps:
       - name: Checkout code
