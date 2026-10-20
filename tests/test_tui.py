@@ -277,6 +277,65 @@ async def test_tui_modal_centering(tmp_path, monkeypatch):
         await pilot.pause(.2)
 
 @pytest.mark.asyncio
+async def test_tui_selection_no_layout_shift(tmp_path, monkeypatch):
+    from textual.widgets import ListView
+    notes_dir = tmp_path / "tui_no_shift"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    storage.create_note(title="First Note", body="Content 1")
+    storage.create_note(title="Second Note", body="Content 2")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        notes_list = app.query_one("#notes-list", ListView)
+        item1 = notes_list.children[0]
+        text1 = item1.query_one(".note-item-text")
+
+        # Check coordinates when notes-list is not focused
+        app.set_focus(app.query_one("#search-input"))
+        await pilot.pause()
+        x_unfocused = text1.region.x
+        w_unfocused = text1.region.width
+
+        # Check coordinates when notes-list is focused and item is highlighted
+        app.set_focus(notes_list)
+        await pilot.pause()
+        x_focused = text1.region.x
+        w_focused = text1.region.width
+
+        # No shift and no width truncation
+        assert x_unfocused == x_focused
+        assert w_unfocused == w_focused
+
+@pytest.mark.asyncio
+async def test_tui_locked_card_centered(tmp_path, monkeypatch):
+    notes_dir = tmp_path / "tui_card_centered"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+
+    n = storage.create_note(title="Secret Note", body="Secret body")
+    storage.lock_note(n, "mypassword")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test(size=(120, 40)) as pilot:
+        await pilot.pause()
+        card = app.query_one("#locked-note-card")
+        vc = app.query_one("#view-container")
+        left_space = card.region.x - vc.region.x
+        right_space = vc.region.width - (card.region.x - vc.region.x + card.region.width)
+        assert abs(left_space - right_space) <= 1
+
+@pytest.mark.asyncio
 async def test_tui_color_format_modal(tmp_path, monkeypatch):
     from noted.tui.screens import ColorFormatModal
     notes_dir = tmp_path / "tui_color_modal"
