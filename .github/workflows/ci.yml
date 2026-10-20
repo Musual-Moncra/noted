@@ -34,3 +34,18 @@ jobs:
 
       - name: Run test suite
         run: uv run --python ${{ matrix.python-version }} pytest -v
+
+      - name: Build Windows executable
+        if: matrix.os == 'windows-latest' && matrix.python-version == '3.11'
+        run: uv run --python 3.11 pyinstaller noted.spec --clean --noconfirm
+
+      - name: Smoke test Windows executable
+        if: matrix.os == 'windows-latest' && matrix.python-version == '3.11'
+        run: ./dist/noted.exe --help
+
+      - name: Upload Windows executable
+        if: matrix.os == 'windows-latest' && matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: noted-windows-x64
+          path: dist/noted.exe
