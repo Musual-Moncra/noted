@@ -173,15 +173,15 @@ class NoteListItem(ListItem):
         short_date = self.summary.date.replace("T", " ")[:10]
         tags_str = " ".join(f"#{t}" for t in self.summary.tags[:3])
         if tags_str:
-            tags_str = f" [dim blue]{tags_str}[/dim blue]"
+            tags_str = f" [#7dcfff]{tags_str}[/#7dcfff]"
 
         title = self.summary.title
         if len(title) > 22:
             title = title[:21] + "…"
 
         text = (
-            f"{icon} [bold]{title}[/bold]\n"
-            f"   [dim]{short_date}[/dim]{tags_str}"
+            f"{icon} [bold #c0caf5]{title}[/bold #c0caf5]\n"
+            f"   [#565f89]{short_date}[/#565f89]{tags_str}"
         )
         yield Static(text, classes="note-item-text")
 
@@ -190,7 +190,7 @@ class MetadataHeader(Vertical):
     """Header bar showing current note metadata in top row and interactive mode buttons in bottom row."""
 
     def compose(self) -> ComposeResult:
-        yield Static("[dim]No note selected[/dim]", id="metadata-info")
+        yield Static("[#565f89]No note selected[/#565f89]", id="metadata-info")
         with Horizontal(id="mode-button-group"):
             yield Button("👁 Xem", id="btn-mode-view", classes="mode-btn -active")
             yield Button("📝 Soạn", id="btn-mode-edit", classes="mode-btn")
@@ -204,7 +204,7 @@ class MetadataHeader(Vertical):
     def update_metadata(self, note: Note | None, current_mode: str, is_unlocked: bool = False) -> None:
         info_widget = self.query_one("#metadata-info", Static)
         if not note:
-            info_widget.update("[dim]No note selected[/dim]")
+            info_widget.update("[#565f89]No note selected[/#565f89]")
             return
 
         if note.encrypted:
@@ -213,12 +213,12 @@ class MetadataHeader(Vertical):
             icon = "📓"
         else:
             icon = "📝"
-        tags_badge = " ".join(f"[blue]#{t}[/blue]" for t in note.tags) if note.tags else "[dim]none[/dim]"
+        tags_badge = " ".join(f"[#7dcfff]#{t}[/#7dcfff]" for t in note.tags) if note.tags else "[#565f89]none[/#565f89]"
         formatted_date = note.date.replace("T", " ")[:16]
 
         content = (
-            f"{icon} [bold white]{note.title}[/bold white]  "
-            f"[dim]({formatted_date})[/dim]  "
+            f"{icon} [bold #c0caf5]{note.title}[/bold #c0caf5]  "
+            f"[#565f89]({formatted_date})[/#565f89]  "
             f"Tags: {tags_badge}"
         )
         info_widget.update(content)
