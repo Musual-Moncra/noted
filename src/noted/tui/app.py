@@ -194,6 +194,7 @@ class NotedApp(App[None]):
             self._resync_requested = True
             return
         self._syncing = True
+        self.main_query('#resource-status', Static).update('Indexing…')
         self._run_sync()
 
     @work(thread=True, group='index-sync')
@@ -201,7 +202,6 @@ class NotedApp(App[None]):
         worker = get_current_worker()
         error = None
         try:
-            self.call_from_thread(self.main_query('#resource-status', Static).update, 'Indexing…')
             self.indexer.sync_all(cancelled=lambda: worker.is_cancelled)
         except Exception as exc:
             error = type(exc).__name__
@@ -223,7 +223,11 @@ class NotedApp(App[None]):
             self.main_query('#resource-status', Static).update('Indexing failed · ' + error)
         else:
             await self.refresh_notes_list()
+            if not self.is_running:
+                return
             await self.refresh_tags()
+            if not self.is_running:
+                return
             self.update_resource_status()
             if self.indexer.sync_errors:
                 self.notify('Some files could not be indexed. Use note sync to retry.', severity='warning')

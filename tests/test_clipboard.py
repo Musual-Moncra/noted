@@ -46,9 +46,11 @@ async def test_tui_copy_content_button_and_shortcut(tmp_path, monkeypatch):
         assert "Content to be copied to clipboard." in copied_items[0]
 
         # Click the [📋 Copy] button in MetadataHeader
-        await pilot.click("#btn-mode-more")
+        await pilot.click("#btn-mode-more", offset=(2, 1))
         await pilot.pause()
-        await pilot.click("#menu-copy")
+        app.screen.query_one("#menu-copy").scroll_visible(animate=False)
+        await pilot.pause()
+        await pilot.click("#menu-copy", offset=(2, 1))
         await pilot.pause(.2)
         assert len(copied_items) == 2
 

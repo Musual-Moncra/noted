@@ -196,6 +196,7 @@ async def test_repeated_mode_changes_keep_footer_controls_and_pages_bounded(seed
     async with NotedApp(custom_config=config).run_test(size=(180,45)) as pilot:
         app = pilot.app
         await pilot.pause()
+        await app.workers.wait_for_complete()
         controls = tuple(app.query_one(Footer).children)
         # Refreshes may overlap when indexing finishes while the query changes.
         import asyncio

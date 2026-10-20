@@ -34,7 +34,7 @@ def test_load_from_toml(tmp_path):
     config_file = tmp_path / "config.toml"
     notes_target = tmp_path / "my_notes"
     config_file.write_text(
-        f'notes_dir = "{notes_target}"\neditor = "nvim"\njournal_template = "## Daily Log\\n"\n'
+        f'notes_dir = "{notes_target.as_posix()}"\neditor = "nvim"\njournal_template = "## Daily Log\\n"\n'
     )
     config = load_config(config_path=config_file)
     assert config.notes_dir == notes_target
