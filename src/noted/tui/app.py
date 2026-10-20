@@ -32,6 +32,7 @@ from noted.config import Config, load_config
 from noted.db import DatabaseManager
 from noted.editor import open_in_editor
 from noted.indexer import NoteIndexer
+import noted.markdown_colors  # noqa: F401
 from noted.models import Note, NoteSummary
 from noted.storage import StorageManager
 from noted.tui.screens import (

@@ -3,6 +3,7 @@ from rich.markdown import Markdown
 from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
+import noted.markdown_colors  # noqa: F401
 from noted.models import Note, NoteSummary, SearchResult
 
 def format_tags(tags: list[str]) -> str:

@@ -304,12 +304,44 @@ async def test_tui_color_format_modal(tmp_path, monkeypatch):
         assert app.screen.styles.align_horizontal == "center"
         assert app.screen.styles.align_vertical == "middle"
 
-        # Press '1' to pick Green Tip
+        # Press '1' to pick Red Text
         await pilot.press("1")
         await pilot.pause()
 
         editor = app.query_one("#text-editor")
-        assert "[!TIP]" in editor.text
+        assert 'style="color: #f7768e"' in editor.text
+
+        # Switch to view mode and verify rendered spans
+        await pilot.click("#btn-mode-view")
+        await pilot.pause()
+        viewer = app.query_one("#markdown-viewer")
+        child_renders = [c.render() for c in viewer.children if hasattr(c, "render")]
+        has_color_span = any(
+            any(getattr(s.style, "foreground", None) is not None for s in r.spans)
+            for r in child_renders if hasattr(r, "spans")
+        )
+        assert has_color_span is True
+
+@pytest.mark.asyncio
+async def test_tui_footer_and_header_rendered(tmp_path, monkeypatch):
+    from textual.widgets import Header, Footer
+    notes_dir = tmp_path / "tui_footer_header"
+    monkeypatch.setenv("NOTES_DIR", str(notes_dir))
+    config = Config(notes_dir=notes_dir)
+    storage = StorageManager(config)
+    db = DatabaseManager(config.db_path)
+    indexer = NoteIndexer(db, storage)
+    storage.create_note(title="Header Footer Test", body="Body")
+    indexer.sync_all()
+
+    app = NotedApp(custom_config=config)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        header = app.query_one(Header)
+        footer = app.query_one(Footer)
+        assert header.size.height == 1
+        assert footer.size.height == 1
+        assert footer.content_size.height == 1
 
 @pytest.mark.asyncio
 async def test_tui_rename_note(tmp_path, monkeypatch):

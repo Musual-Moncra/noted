@@ -7,15 +7,12 @@ Header {
     background: #1f2335;
     color: #7aa2f7;
     text-style: bold;
-    border-bottom: solid #292e42;
 }
 
 Footer {
     background: #1f2335;
     color: #a9b1d6;
-    border-top: solid #292e42;
 }
-
 #main-container {
     layout: horizontal;
     height: 1fr;
@@ -219,8 +216,8 @@ ModalScreen {
 
 .color-choice-row {
     layout: horizontal;
-    height: auto;
-    margin-bottom: 1;
+    height: 1;
+    margin-bottom: 0;
     align-vertical: middle;
 }
 

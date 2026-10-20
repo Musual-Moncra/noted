@@ -418,45 +418,48 @@ class ColorFormatModal(ModalScreen[Optional[str]]):
 
     BINDINGS = [
         Binding("escape", "cancel", "Cancel", priority=True),
-        Binding("1", "select_opt_1", "Green"),
-        Binding("2", "select_opt_2", "Blue"),
+        Binding("1", "select_opt_1", "Red"),
+        Binding("2", "select_opt_2", "Green"),
         Binding("3", "select_opt_3", "Yellow"),
-        Binding("4", "select_opt_4", "Red"),
+        Binding("4", "select_opt_4", "Blue"),
         Binding("5", "select_opt_5", "Purple"),
-        Binding("6", "select_opt_6", "Diff Green"),
-        Binding("7", "select_opt_7", "Diff Red"),
-        Binding("8", "select_opt_8", "HTML Red"),
-        Binding("9", "select_opt_9", "HTML Blue"),
+        Binding("6", "select_opt_6", "Orange"),
+        Binding("7", "select_opt_7", "Cyan"),
+        Binding("8", "select_opt_8", "Pink"),
+        Binding("9", "select_opt_9", "Tip Box"),
+        Binding("0", "select_opt_0", "Warning Box"),
     ]
 
     TEMPLATES = {
-        "1": "> [!TIP]\n> {text}\n",
-        "2": "> [!NOTE]\n> {text}\n",
-        "3": "> [!WARNING]\n> {text}\n",
-        "4": "> [!CAUTION]\n> {text}\n",
-        "5": "> [!IMPORTANT]\n> {text}\n",
-        "6": "```diff\n+ {text}\n```\n",
-        "7": "```diff\n- {text}\n```\n",
-        "8": '<span style="color: #e74c3c">{text}</span>',
-        "9": '<span style="color: #3498db">{text}</span>',
+        "1": '<span style="color: #f7768e">{text}</span>',
+        "2": '<span style="color: #9ece6a">{text}</span>',
+        "3": '<span style="color: #e0af68">{text}</span>',
+        "4": '<span style="color: #7aa2f7">{text}</span>',
+        "5": '<span style="color: #bb9af7">{text}</span>',
+        "6": '<span style="color: #ff9e64">{text}</span>',
+        "7": '<span style="color: #7dcfff">{text}</span>',
+        "8": '<span style="color: #f5c2e7">{text}</span>',
+        "9": "> [!TIP]\n> {text}\n",
+        "0": "> [!WARNING]\n> {text}\n",
     }
 
     OPTIONS = [
-        ("1", "btn-c-1", "🟢 Xanh lá (Tip / Success)", "1"),
-        ("2", "btn-c-2", "🔵 Xanh dương (Note / Info)", "2"),
-        ("3", "btn-c-3", "🟡 Vàng (Cảnh báo / Warning)", "3"),
-        ("4", "btn-c-4", "🔴 Đỏ (Nguy hiểm / Caution)", "4"),
-        ("5", "btn-c-5", "🟣 Tím (Quan trọng / Important)", "5"),
-        ("6", "btn-c-6", "🟩 Diff Xanh (Dòng thêm vào +)", "6"),
-        ("7", "btn-c-7", "🟥 Diff Đỏ (Dòng lỗi/xóa -)", "7"),
-        ("8", "btn-c-8", "🔴 Thẻ HTML Đỏ (#e74c3c)", "8"),
-        ("9", "btn-c-9", "🔵 Thẻ HTML Xanh (#3498db)", "9"),
+        ("1", "btn-c-1", "🔴 Chữ Đỏ (Red)", "1"),
+        ("2", "btn-c-2", "🟢 Chữ Xanh lá (Green)", "2"),
+        ("3", "btn-c-3", "🟡 Chữ Vàng (Yellow)", "3"),
+        ("4", "btn-c-4", "🔵 Chữ Xanh dương (Blue)", "4"),
+        ("5", "btn-c-5", "🟣 Chữ Tím (Purple)", "5"),
+        ("6", "btn-c-6", "🟠 Chữ Cam (Orange)", "6"),
+        ("7", "btn-c-7", "🔷 Chữ Xanh ngọc (Cyan)", "7"),
+        ("8", "btn-c-8", "🌸 Chữ Hồng (Pink)", "8"),
+        ("9", "btn-c-9", "💡 Khung Ghi chú (Tip Box)", "9"),
+        ("0", "btn-c-0", "⚠️ Khung Cảnh báo (Warning Box)", "0"),
     ]
 
     def compose(self) -> ComposeResult:
         with Vertical(classes="modal-dialog"):
-            yield Label("🎨 Chọn Định Dạng Màu Sắc Chữ", classes="dialog-title")
-            yield Static("[dim]Bấm số [bold cyan]1-9[/bold cyan] hoặc click chuột để áp dụng màu:[/dim]\n")
+            yield Label("🎨 Chọn Màu Chữ & Định Dạng", classes="dialog-title")
+            yield Static("[dim]Bấm số [bold cyan]1-8[/bold cyan] đổi màu chữ hoặc [bold cyan]9, 0[/bold cyan] đóng khung:[/dim]\n")
             for key, btn_id, label, opt_key in self.OPTIONS:
                 with Horizontal(classes="color-choice-row"):
                     yield Static(f"[bold cyan][{key}][/bold cyan]", classes="key-badge-small")
@@ -484,4 +487,5 @@ class ColorFormatModal(ModalScreen[Optional[str]]):
     def action_select_opt_7(self) -> None: self.dismiss(self.TEMPLATES["7"])
     def action_select_opt_8(self) -> None: self.dismiss(self.TEMPLATES["8"])
     def action_select_opt_9(self) -> None: self.dismiss(self.TEMPLATES["9"])
+    def action_select_opt_0(self) -> None: self.dismiss(self.TEMPLATES["0"])
 
